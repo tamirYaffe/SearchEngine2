@@ -122,8 +122,8 @@ public class ReadFile {
 
     private void processdocument(List<String> doc, int docID) {
         //createDoc(filePath,startLineNum,endLineNum,docID);
-        List<String> terms=parse.parseDocument(extractFileText(doc));
-        indexer.createInvertedIndex(terms,docID);
+        //List<String> terms=parse.parseDocument(extractFileText(doc));
+        //indexer.createInvertedIndex(terms,docID);
     }
 
     private void createDoc(Path filePath, int startLineNum, int numOfLines, int docID) {
