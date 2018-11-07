@@ -1,8 +1,9 @@
 package SearchEngineTools.Term;
 
-public abstract class ATerm  implements ITerm, Comparable<ITerm>{
+public abstract class ATerm  implements Comparable<ATerm>{
 
     private int occurrences=0;
+    private String term;
 
     public void setOccurrences(int occurrences){
         this.occurrences = occurrences;
@@ -16,7 +17,9 @@ public abstract class ATerm  implements ITerm, Comparable<ITerm>{
         return getTerm();
     }
 
-    public abstract String getTerm();
+    public String getTerm(){
+        return term;
+    }
 
     /*public boolean isInteger(float f){
         float newF = f - (int)f;
@@ -24,8 +27,8 @@ public abstract class ATerm  implements ITerm, Comparable<ITerm>{
     }*/
 
     public boolean equals(Object other){
-        if(other instanceof ITerm)
-            return this.getTerm().equals(((ITerm) other).getTerm());
+        if(other instanceof ATerm)
+            return this.getTerm().equals(((ATerm) other).getTerm());
         return false;
     }
 
@@ -34,7 +37,7 @@ public abstract class ATerm  implements ITerm, Comparable<ITerm>{
         return getTerm().hashCode();
     }
 
-    public int compareTo(ITerm other){
+    public int compareTo(ATerm other){
         return this.getTerm().compareTo(other.getTerm());
     }
 }
