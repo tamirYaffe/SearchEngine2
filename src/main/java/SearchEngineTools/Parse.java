@@ -29,8 +29,10 @@ public class Parse {
 
     //all the words that represent percentages
     //for example %, percent, etc...
-    private Collection percentWords;
+    private Collection<String> percentWords;
 
+    //stop words to be removed
+    private Collection<String> stopWords;
 
 
     /**
@@ -149,9 +151,9 @@ public class Parse {
     /////////////////////////////////////////////
 
 
-    public List<ITerm> parseDocument(List<String> document){
+    public Collection<ATerm> parseDocument(List<String> document){
         Map<ATerm,Integer> occurrencesOfTerms = new HashMap<>();
-        List<ATerm> ATerms=new ArrayList<>();
+        List<ATerm> terms=new ArrayList<>();
         List<String> tokens=tokenize(document);
         //do text operations(remove unnecessary chars, change words by the assignment rules).
         removeUnnecessaryChars(tokens);
@@ -160,22 +162,33 @@ public class Parse {
         do{
             next = getNextTerm(tokens);
             if(next!=null) {
-                ATerms.addAll(next);
+                terms.addAll(next);
             }
         }while (next != null);
-        addTermsToList(ATerms, occurrencesOfTerms);
-        return getFinalList(ATerms, occurrencesOfTerms);
+
+        //remove stop words
+        removeStopWords(terms);
+        addTermsToList(terms, occurrencesOfTerms);
+        return getFinalList(terms, occurrencesOfTerms);
         //remove stop words.
         //allow stemming.
     }
 
-    List<ITerm> getFinalList(List<ATerm> from, Map<ATerm,Integer> occurrencesOfTerms){
-        List<ITerm> finalList = new ArrayList<>();
-        for (ATerm t:from) {
-            DocumentTerm newTerm = new DocumentTerm(t,occurrencesOfTerms.get(t));
-            finalList.add(newTerm);
+    private void removeStopWords(List<ATerm> toRemoveFrom){
+        if(stopWords!=null){
+            for (ATerm term: toRemoveFrom) {
+                if(stopWords.contains(term.getTerm().toLowerCase()))
+                    toRemoveFrom.remove(term);
+            }
         }
-        return finalList;
+    }
+    Collection<ATerm> getFinalList(List<ATerm> from, Map<ATerm,Integer> occurrencesOfTerms){
+        List<ATerm> finalList = new ArrayList<>();
+        for (ATerm t:from) {
+            int occurrence = occurrencesOfTerms.get(t);
+            t.setOccurrences(occurrence);
+        }
+        return occurrencesOfTerms.keySet();
     }
     private void addTermsToList(List<ATerm> addFrom, Map<ATerm,Integer> occurrencesOfTerms){
         for (ATerm t: addFrom) {
