@@ -16,6 +16,7 @@ public class NumberTerm extends ATerm{
         this.numberWithoutDecimal = other.getNumberWithoutDecimal();
         this.locationOfDecimal = other.getLocationOfDecimal();
         containsDecimal = other.containsDecimal;
+        this.term = createTerm();
     }
 
     public NumberTerm(String s){
@@ -38,6 +39,7 @@ public class NumberTerm extends ATerm{
                 j++;
             }
         }
+        this.term = null;
     }
 
     private static String removeCommas(String s) {
@@ -53,25 +55,7 @@ public class NumberTerm extends ATerm{
     public boolean isWholeNumber(){
         return !this.containsDecimal;
     }
-    @Override
-    public String getTerm() {
-        String afterNumber = "";
-        int digitsBeforeDecimal = containsDecimal ? locationOfDecimal : numberWithoutDecimal.length;
-        if(digitsBeforeDecimal > 10){
-            afterNumber = "B";
-            digitsBeforeDecimal-=9;
-        }
-        else if(digitsBeforeDecimal > 7){
-            afterNumber = "M";
-            digitsBeforeDecimal-=6;
-        }
-        else if(digitsBeforeDecimal > 4){
-            afterNumber = "K";
-            digitsBeforeDecimal-=3;
-        }
 
-        return getValue(digitsBeforeDecimal)+afterNumber;
-    }
 
     public void multiply(Value multiplyBy){
         int digitsToAdd=0;
@@ -102,6 +86,7 @@ public class NumberTerm extends ATerm{
         if(locationOfDecimal!=Integer.MAX_VALUE) {
             this.locationOfDecimal += digitsToAdd;
         }
+        this.term = null;
     }
 
     public char[] getNumberWithoutDecimal() {
@@ -138,21 +123,6 @@ public class NumberTerm extends ATerm{
         }
         String toReturn = s.substring(0,lastNecessaryIndx+1);
         return toReturn;
-        /*int lastNecessaryIndx = numberWithoutDecimal.length-1;;
-        boolean necessary = false;
-        int indexPtr = numberWithoutDecimal.length-1;
-        while (!necessary && indexPtr>0 && indexPtr<=locationOfDecimal){
-            if(numberWithoutDecimal[indexPtr]==0 || numberWithoutDecimal[indexPtr]==0){
-                lastNecessaryIndx-=1;
-            }
-            indexPtr--;
-        }
-        char[] newNumberWithoutDecimal = new char[lastNecessaryIndx+1];
-        for (int i = 0; i <= lastNecessaryIndx; i++) {
-            newNumberWithoutDecimal[i] = numberWithoutDecimal[i];
-        }
-
-        numberWithoutDecimal = newNumberWithoutDecimal;*/
     }
 
     public static boolean isInteger (NumberTerm numberTerm){
@@ -176,19 +146,44 @@ public class NumberTerm extends ATerm{
     }
 
     private String getValue(int locationOfDecimal){
-        String value = "";
+        StringBuilder value = new StringBuilder();
         int digitsToPrint = locationOfDecimal==numberWithoutDecimal.length ? this.numberWithoutDecimal.length : this.numberWithoutDecimal.length+1;
         boolean containsDecimal = false;
         for (int i = 0, j=0; i < digitsToPrint; i++) {
             if(i==locationOfDecimal){
-                value+=".";
+                value.append('.');
                 containsDecimal = true;
             }
             else {
-                value += numberWithoutDecimal[j];
+                value.append(numberWithoutDecimal[j]);
                 j++;
             }
         }
-        return containsDecimal ? removeUnnecessaryDigits(value) : value;
+        return containsDecimal ? removeUnnecessaryDigits(value.toString()) : value.toString();
+    }
+
+    protected String createTerm(){
+        String afterNumber = "";
+        int digitsBeforeDecimal = containsDecimal ? locationOfDecimal : numberWithoutDecimal.length;
+        if(digitsBeforeDecimal > 10){
+            afterNumber = "B";
+            digitsBeforeDecimal-=9;
+        }
+        else if(digitsBeforeDecimal > 7){
+            afterNumber = "M";
+            digitsBeforeDecimal-=6;
+        }
+        else if(digitsBeforeDecimal > 4){
+            afterNumber = "K";
+            digitsBeforeDecimal-=3;
+        }
+
+        return getValue(digitsBeforeDecimal)+afterNumber;
+    }
+
+    public String getTerm(){
+        if(term==null)
+            term = createTerm();
+        return super.getTerm();
     }
 }

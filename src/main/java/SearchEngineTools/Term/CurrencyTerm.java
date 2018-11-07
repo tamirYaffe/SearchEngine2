@@ -20,20 +20,22 @@ public class CurrencyTerm extends ATerm{
             afterNumber = " M";
         }
         int digitsToPrint = digitsBeforeDecimal==numberWithoutDecimal.length ? numberWithoutDecimal.length : numberWithoutDecimal.length+1;
-        String term = "";
+        StringBuilder term = new StringBuilder();
         for (int i = 0, j=0; i < digitsToPrint; i++) {
             if(i==digitsBeforeDecimal){
-                term+=".";
+                term.append(".");
             }
             else {
-                term += numberWithoutDecimal[j];
+                term.append(numberWithoutDecimal[j]);
                 j++;
             }
         }
-        return term+afterNumber;
+        term.append(afterNumber);
+        return term.toString();
     }
+
     @Override
-    public String getTerm() {
-        return currency+getValueTermString();
+    protected String createTerm() {
+        return getValueTermString()+" "+currency;
     }
 }

@@ -14,7 +14,8 @@ public class CompoundFractionCurrencyTerm extends CurrencyTerm {
         this.fraction = fraction;
     }
 
-    public String getTerm(){
+    @Override
+    protected String createTerm() {
         return getValueTermString()+" "+fraction.getTerm()+" "+currency;
     }
 }
