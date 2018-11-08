@@ -62,12 +62,16 @@ public class NumberTerm extends ATerm{
         switch (multiplyBy){
             case TRILLION:
                 digitsToAdd=12;
+                break;
             case BILLION:
                 digitsToAdd=9;
+                break;
             case MILLION:
                 digitsToAdd=6;
+                break;
             case THOUSAND:
                 digitsToAdd=3;
+                break;
         }
         //add digits
         char[] newNumberWithoutDecimal = new char[this.numberWithoutDecimal.length+digitsToAdd];

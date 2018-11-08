@@ -14,7 +14,7 @@ public abstract class ATerm  implements Comparable<ATerm>{
     }
 
     public String toString(){
-        return getTerm();
+        return "Term: "+getTerm()+"~ Occurrences: "+getOccurrences();
     }
 
     public String getTerm(){

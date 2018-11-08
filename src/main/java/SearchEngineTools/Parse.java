@@ -32,7 +32,7 @@ public class Parse {
     private Collection<String> percentWords;
 
     //stop words to be removed
-    private Collection<String> stopWords;
+    protected Collection<String> stopWords;
 
 
     /**
@@ -41,6 +41,7 @@ public class Parse {
     //initializes data structures
     public Parse(){
         initializeDataStructures();
+        this.stopWords = new ArrayList<>();
     }
     /**
      * all strings that represent value, (i.g thousand, million)
@@ -174,7 +175,8 @@ public class Parse {
         //allow stemming.
     }
 
-    private void removeStopWords(List<ATerm> toRemoveFrom){
+
+    protected void removeStopWords(List<ATerm> toRemoveFrom){
         if(stopWords!=null){
             for (ATerm term: toRemoveFrom) {
                 if(stopWords.contains(term.getTerm().toLowerCase()))
@@ -190,7 +192,7 @@ public class Parse {
         }
         return occurrencesOfTerms.keySet();
     }
-    private void addTermsToList(List<ATerm> addFrom, Map<ATerm,Integer> occurrencesOfTerms){
+    protected void addTermsToList(List<ATerm> addFrom, Map<ATerm, Integer> occurrencesOfTerms){
         for (ATerm t: addFrom) {
             if(occurrencesOfTerms.containsKey(t)){
                 int oldValue = occurrencesOfTerms.get(t);
@@ -207,14 +209,14 @@ public class Parse {
      * removes unnecessary chars from the token list, e.g '.' ','
      * @param tokens- the token list we remove chars from
      */
-    private void removeUnnecessaryChars(List<String> tokens) {
+    protected void removeUnnecessaryChars(List<String> tokens) {
         List<Character> unnecessaryChars=new ArrayList<>();
         unnecessaryChars.add('.');
         unnecessaryChars.add(',');
         tokens.replaceAll(token->{
             if(unnecessaryChars.contains(token.charAt(0)))
                 token=token.substring(1);
-            if(unnecessaryChars.contains(token.charAt(token.length()-1)))
+            if(unnecessaryChars.contains(token.substring(token.length() - 1)))
                 token=token.substring(0,token.length()-1);
             return token;
         });
@@ -225,7 +227,7 @@ public class Parse {
      * @param document- the documents lines.
      * @return the queue of document words.
      */
-    private List<String> tokenize(List<String> document) {
+    protected List<String> tokenize(List<String> document) {
         List<String> tokens=new LinkedList<>();
         document.forEach(line -> {
             //String[]tokens = line.split(" |\\.|\\,");
@@ -303,7 +305,7 @@ public class Parse {
         return new FractionTerm(numerator,denominator);
     }
 
-    private List<ATerm> getNextTerm(List<String> tokens){
+    protected List<ATerm> getNextTerm(List<String> tokens){
         List<ATerm> toReturn = new ArrayList<>();
         ATerm nextTerm = null;
         //if list is empty, no tokens

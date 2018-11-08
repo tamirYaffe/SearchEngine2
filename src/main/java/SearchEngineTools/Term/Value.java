@@ -1,5 +1,5 @@
 package SearchEngineTools.Term;
 
 public enum Value {
-    THOUSAND, MILLION, BILLION, TRILLION
+    THOUSAND, MILLION, BILLION, TRILLION;
 }
