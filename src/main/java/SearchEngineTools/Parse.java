@@ -674,7 +674,7 @@ public class Parse {
         Pair<String,Integer> toReturn = null;
         String toCheck = "";
         Collection<String> keys = toGetFrom.keySet();
-        for (int i = 0; i < toGetFrom.getWordsInLongestKey() && i<=tokens.size(); i++) {
+        for (int i = 0; i < toGetFrom.getWordsInLongestKey() && i<tokens.size(); i++) {
             String toAdd = tokens.get(i);
             if(i!=0)
                 toCheck+=(" "+toAdd);
