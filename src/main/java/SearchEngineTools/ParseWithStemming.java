@@ -19,7 +19,7 @@ public class ParseWithStemming extends Parse {
         List<ATerm> terms=new ArrayList<>();
         List<String> tokens=tokenize(document);
         //do text operations(remove unnecessary chars, change words by the assignment rules).
-        removeUnnecessaryChars(tokens);
+        //removeUnnecessaryChars(tokens);
         //get terms
         List<ATerm> next = null;
         do{
@@ -46,45 +46,12 @@ public class ParseWithStemming extends Parse {
                 //stem
                 stemTerm((WordTerm) term);
                 //add to occurrance list
-                addToOccurancesList((WordTerm) term,occurances, isLowerCase);
+                addWordTermToList((WordTerm) term,occurances, isLowerCase);
             }
             else
                 addToOccurancesList(term,occurances);
         }
 
-    }
-
-    private void addToOccurancesList(WordTerm term, Map<ATerm, Integer> occurances, boolean isLowerCase) {
-        term.toLowerCase();
-        boolean existsLowercase = occurances.containsKey(term);
-        term.toUperCase();
-        boolean existsUppercase = occurances.containsKey(term);
-
-        if(isLowerCase && existsUppercase){
-            int occurrancesOfTerm = occurances.get(term);
-            occurances.remove(term);
-            term.toLowerCase();
-            if(existsLowercase)
-                occurances.replace(term,occurances.get(term)+occurrancesOfTerm+1);
-            else
-                occurances.put(term,occurrancesOfTerm+1);
-        }
-        else if(isLowerCase){
-            term.toLowerCase();
-            addToOccurancesList(term, occurances);
-        }
-        else if (existsLowercase){
-            term.toLowerCase();
-            addToOccurancesList(term,occurances);
-        }
-        else
-            addToOccurancesList(term,occurances);
-
-    }
-
-    private void addToOccurancesList(ATerm term, Map<ATerm, Integer> occurances) {
-        occurances.putIfAbsent(term,0);
-        occurances.replace(term,occurances.get(term)+1);
     }
 
     private void stemTerm(WordTerm term){

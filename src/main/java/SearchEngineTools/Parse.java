@@ -199,7 +199,7 @@ public class Parse {
 
         //remove stop words
         removeStopWords(terms);
-        addTermsToList(terms, occurrencesOfTerms);
+        //addTermsToList(terms, occurrencesOfTerms);
         return getFinalList(terms, occurrencesOfTerms);
         //remove stop words.
         //allow stemming.
@@ -214,11 +214,49 @@ public class Parse {
             }
         }
     }
+
+    protected void addToOccurancesList(ATerm term, Map<ATerm, Integer> occurances) {
+        occurances.putIfAbsent(term,0);
+        occurances.replace(term,occurances.get(term)+1);
+    }
+
+    protected void addWordTermToList(WordTerm term, Map<ATerm,Integer> occurrencesOfTerms, boolean isLowerCase){
+        term.toLowerCase();
+        boolean existsLowercase = occurrencesOfTerms.containsKey(term);
+        term.toUperCase();
+        boolean existsUppercase = occurrencesOfTerms.containsKey(term);
+
+        if(isLowerCase && existsUppercase){
+            int occurrancesOfTerm = occurrencesOfTerms.get(term);
+            occurrencesOfTerms.remove(term);
+            term.toLowerCase();
+            if(existsLowercase)
+                occurrencesOfTerms.replace(term,occurrencesOfTerms.get(term)+occurrancesOfTerm+1);
+            else
+                occurrencesOfTerms.put(term,occurrancesOfTerm+1);
+        }
+        else if(isLowerCase){
+            term.toLowerCase();
+            addToOccurancesList(term, occurrencesOfTerms);
+        }
+        else if (existsLowercase){
+            term.toLowerCase();
+            addToOccurancesList(term,occurrencesOfTerms);
+        }
+        else
+            addToOccurancesList(term,occurrencesOfTerms);
+    }
     Collection<ATerm> getFinalList(List<ATerm> from, Map<ATerm,Integer> occurrencesOfTerms){
-        List<ATerm> finalList = new ArrayList<>();
         for (ATerm t:from) {
-            int occurrence = occurrencesOfTerms.get(t);
-            t.setOccurrences(occurrence);
+            if(t instanceof WordTerm){
+                addWordTermToList((WordTerm) t,occurrencesOfTerms,Character.isLowerCase(t.getTerm().charAt(0)));
+            }
+            else{
+                addToOccurancesList(t,occurrencesOfTerms);
+            }
+        }
+        for (ATerm t:occurrencesOfTerms.keySet()) {
+            t.setOccurrences(occurrencesOfTerms.get(t));
         }
         return occurrencesOfTerms.keySet();
     }
