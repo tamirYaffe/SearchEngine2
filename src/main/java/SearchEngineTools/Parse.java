@@ -38,6 +38,8 @@ public class Parse {
     //characters to be removed from beginning and end of words
     private Collection<Character> necessaryChars;
 
+    private ParsingHashMap years;
+
 
     /**
      * default constructor
@@ -104,6 +106,7 @@ public class Parse {
         initializeLastDaysInMonth();
         initializePercentWords();
         initializeNecessaryChars();
+        initializeYears();
     }
 
     private void initializeNecessaryChars() {
@@ -159,6 +162,23 @@ public class Parse {
     private void initializeCurrencySymbols(){
         this.currencySymbols = new HashSet<>();
         currencySymbols.add('$');
+    }
+
+    private void initializeYears(){
+        this.years = new ParsingHashMap();
+        String AD = "AD";
+        String BC = "BC";
+        years.put("AD",AD);
+        years.put("A.D",AD);
+        years.put("A.D.E",AD);
+        years.put("ADE",AD);
+        years.put("Year of our Lord",AD);
+        years.put("Year of our Lourd",AD);
+        years.put("BC",BC);
+        years.put("B.C",BC);
+        years.put("B.C.E",BC);
+        years.put("BCE",BC);
+        years.put("Before Christ",BC);
     }
 
     /////////////////////////////////////////////
@@ -342,8 +362,19 @@ public class Parse {
         //get next word
         if(!tokens.isEmpty()) {
             String nextToken = tokens.get(0);
+            //check year
+            Pair<String,Integer> year = null;
+            if(isInteger(((NumberTerm)nextTerm).getValue())){
+                year=getNextRelevantTerm(tokens,years);
+            }
+            if(year!=null){
+                nextTerm = new YearTerm((NumberTerm) nextTerm,this.years.get(year.getKey()));
+                for (int i = 0; i <= year.getValue(); i++) {
+                    tokens.remove(0);
+                }
+            }
             //check if percentage
-            if (percentWords.contains(nextToken)) {
+            else if (percentWords.contains(nextToken)) {
                 nextTerm = new PercentageTerm((NumberTerm)nextTerm);
                 tokens.remove(0);
             }
@@ -375,7 +406,7 @@ public class Parse {
                 //check if currency
                 Pair<String,Integer> currencyNameAndLocation = null;
                 if(!tokens.isEmpty()) {
-                    currencyNameAndLocation = getNextCurrencyTerm(tokens);
+                    currencyNameAndLocation = getNextRelevantTerm(tokens,currencyTypes);
                 }
                 if(currencyNameAndLocation != null){
                     nextTerm = isFraction ? new CompoundFractionCurrencyTerm((CompoundFractionTerm)nextTerm, this.currencyTypes.get(currencyNameAndLocation.getKey()))
@@ -524,9 +555,19 @@ public class Parse {
         return (token.length()>1 && token.charAt(token.length()-1)=='%' && isNumber(token.substring(0,token.length()-1)));
     }
 
-    private boolean isInteger(String s){
+    private boolean isInteger(CharSequence s){
+        String string;
+        if(s instanceof String)
+            string = (String)s;
+        else{
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < s.length(); i++) {
+                sb.append(s.charAt(i));
+            }
+            string = sb.toString();
+        }
         try {
-            Integer.parseInt(s);
+            Integer.parseInt(string);
             return true;
         }
         catch (Exception e){
@@ -591,38 +632,24 @@ public class Parse {
         return null;
     }
 
-    private Pair<String, Integer> getNextCurrencyTerm(List<String> tokens){
+    private static Pair<String, Integer> getNextRelevantTerm(List<String> tokens, ParsingHashMap toGetFrom){
         Pair<String,Integer> toReturn = null;
-        String currencyToCheck = "";
-        Collection<String> currencies = currencyTypes.keySet();
-        for (int i = 0; i < currencyTypes.getWordsInLongestKey() && i<=tokens.size(); i++) {
+        String toCheck = "";
+        Collection<String> keys = toGetFrom.keySet();
+        for (int i = 0; i < toGetFrom.getWordsInLongestKey() && i<=tokens.size(); i++) {
             String toAdd = tokens.get(i);
             if(i!=0)
-                currencyToCheck+=(" "+toAdd);
+                toCheck+=(" "+toAdd);
             else
-                currencyToCheck+=toAdd;
-            if(getCurrencyStrings().contains(currencyToCheck)) {
-                toReturn = new Pair<>(currencyToCheck, i);
+                toCheck+=toAdd;
+            if(keys.contains(toCheck)) {
+                toReturn = new Pair<>(toCheck, i);
                 break;
             }
         }
         return toReturn;
     }
 
-    private static boolean stringsAreEqual(String s1, String s2){
-        if(s1==null && s2==null)
-            return true;
-        if(s1==null || s2==null)
-            return false;
-        if(s1.length()==s2.length()){
-            for (int i = 0; i < s1.length(); i++) {
-                if(s1.charAt(i)!=s2.charAt(i))
-                    return false;
-            }
-            return true;
-        }
-        return false;
-    }
 
 
 }

@@ -157,7 +157,7 @@ public class NumberTerm extends ATerm{
 
     private String getValue(int locationOfDecimal){
         StringBuilder value = new StringBuilder();
-        int digitsToPrint = locationOfDecimal==numberWithoutDecimal.size() ? this.numberWithoutDecimal.size() : this.numberWithoutDecimal.size()+1;
+        int digitsToPrint = containsDecimal ? this.numberWithoutDecimal.size()+1 : this.numberWithoutDecimal.size();
         boolean containsDecimal = false;
         for (int i = 0, j=0; i < digitsToPrint; i++) {
             if(i==locationOfDecimal){
