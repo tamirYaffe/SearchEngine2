@@ -21,6 +21,6 @@ public class FractionTerm extends ATerm {
 
     @Override
     protected String createTerm() {
-        return numerator+"/"+denominator;
+        return numerator.getTerm()+"/"+denominator.getTerm();
     }
 }

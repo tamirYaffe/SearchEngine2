@@ -7,48 +7,62 @@ import java.util.Map;
 public class NumberTerm extends ATerm{
 
 
-    private char[] numberWithoutDecimal;
+    private List<Character> numberWithoutDecimal;
     private int locationOfDecimal;
-    boolean containsDecimal;
+    private boolean containsDecimal;
+    private boolean isNegative;
 
 
     public NumberTerm(NumberTerm other){
         this.numberWithoutDecimal = other.getNumberWithoutDecimal();
         this.locationOfDecimal = other.getLocationOfDecimal();
         containsDecimal = other.containsDecimal;
-        this.term = createTerm();
+        this.isNegative=other.isNegative;
+        this.term = null;
+
     }
 
     public NumberTerm(String s){
         locationOfDecimal = Integer.MAX_VALUE;
         String number = removeCommas(s);
+        //check if negative number
+        int firstDigit;
+        if(s.charAt(0)=='-'){
+            isNegative = true;
+            firstDigit=1;
+        }
+        else {
+            isNegative = false;
+            firstDigit=0;
+        }
         if(number.contains(".")){
-            numberWithoutDecimal = new char[number.length()-1];
+            numberWithoutDecimal = new ArrayList<>(number.length()-1);
             containsDecimal =true;
         }
         else{
-            numberWithoutDecimal = new char[number.length()];
+            numberWithoutDecimal = new ArrayList<>(number.length());
             containsDecimal = false;
         }
-        for (int i = 0, j= 0; i < number.length(); i++) {
+        for (int i = firstDigit; i < number.length(); i++) {
             if(number.charAt(i)=='.') {
                 locationOfDecimal = i;
             }
             else {
-                numberWithoutDecimal[j] = number.charAt(i);
-                j++;
+                numberWithoutDecimal.add(number.charAt(i));
             }
         }
         this.term = null;
     }
 
     private static String removeCommas(String s) {
-        String toReturn = "";
+        StringBuilder toReturn = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            toReturn+= c == ',' ? "" : c;
+            if(c==',')
+                continue;
+            toReturn.append(c);
         }
-        return toReturn;
+        return toReturn.toString();
     }
 
 
@@ -74,18 +88,9 @@ public class NumberTerm extends ATerm{
                 break;
         }
         //add digits
-        char[] newNumberWithoutDecimal = new char[this.numberWithoutDecimal.length+digitsToAdd];
-        int newPointer =0, oldPointer =0;
-        while (oldPointer<this.numberWithoutDecimal.length){
-            newNumberWithoutDecimal[newPointer] = this.numberWithoutDecimal[oldPointer];
-            newPointer++;
-            oldPointer++;
+        for (int i = 0; i < digitsToAdd; i++) {
+            numberWithoutDecimal.add('0');
         }
-        while (newPointer < newNumberWithoutDecimal.length){
-            newNumberWithoutDecimal[newPointer] = '0';
-            newPointer++;
-        }
-        this.numberWithoutDecimal = newNumberWithoutDecimal;
         //move decimal
         if(locationOfDecimal!=Integer.MAX_VALUE) {
             this.locationOfDecimal += digitsToAdd;
@@ -93,10 +98,10 @@ public class NumberTerm extends ATerm{
         this.term = null;
     }
 
-    public char[] getNumberWithoutDecimal() {
-        char[] toReturn = new char[numberWithoutDecimal.length];
-        for (int i = 0; i < toReturn.length; i++) {
-            toReturn[i] = numberWithoutDecimal[i];
+    public List<Character> getNumberWithoutDecimal() {
+        List<Character> toReturn = new ArrayList<>();
+        for (int i = 0; i < numberWithoutDecimal.size(); i++) {
+            toReturn.add(numberWithoutDecimal.get(i));
         }
         return toReturn;
     }
@@ -140,18 +145,19 @@ public class NumberTerm extends ATerm{
     }
 
     public float getValueOfNumber(){
-        String val = "0";
-        for (int i = 0; i < this.numberWithoutDecimal.length; i++) {
+        StringBuilder val = new StringBuilder();
+        val.append("0");
+        for (int i = 0; i < this.numberWithoutDecimal.size(); i++) {
             if(i == locationOfDecimal)
-                val+=".";
-            val+=numberWithoutDecimal[i];
+                val.append(".");
+            val.append(numberWithoutDecimal.get(i));
         }
-        return Float.parseFloat(val);
+        return Float.parseFloat(val.toString());
     }
 
     private String getValue(int locationOfDecimal){
         StringBuilder value = new StringBuilder();
-        int digitsToPrint = locationOfDecimal==numberWithoutDecimal.length ? this.numberWithoutDecimal.length : this.numberWithoutDecimal.length+1;
+        int digitsToPrint = locationOfDecimal==numberWithoutDecimal.size() ? this.numberWithoutDecimal.size() : this.numberWithoutDecimal.size()+1;
         boolean containsDecimal = false;
         for (int i = 0, j=0; i < digitsToPrint; i++) {
             if(i==locationOfDecimal){
@@ -159,7 +165,7 @@ public class NumberTerm extends ATerm{
                 containsDecimal = true;
             }
             else {
-                value.append(numberWithoutDecimal[j]);
+                value.append(this.numberWithoutDecimal.get(j));
                 j++;
             }
         }
@@ -168,26 +174,33 @@ public class NumberTerm extends ATerm{
 
     protected String createTerm(){
         String afterNumber = "";
-        int digitsBeforeDecimal = containsDecimal ? locationOfDecimal : numberWithoutDecimal.length;
-        if(digitsBeforeDecimal > 10){
+        int digitsBeforeDecimal = containsDecimal ? locationOfDecimal : numberWithoutDecimal.size();
+        if(digitsBeforeDecimal >= 10){
             afterNumber = "B";
             digitsBeforeDecimal-=9;
         }
-        else if(digitsBeforeDecimal > 7){
+        else if(digitsBeforeDecimal >= 7){
             afterNumber = "M";
             digitsBeforeDecimal-=6;
         }
-        else if(digitsBeforeDecimal > 4){
+        else if(digitsBeforeDecimal >= 4){
             afterNumber = "K";
             digitsBeforeDecimal-=3;
         }
 
-        return getValue(digitsBeforeDecimal)+afterNumber;
+
+        String beforeNumber = isNegative ? "-" : "";
+
+        return beforeNumber+getValue(digitsBeforeDecimal)+afterNumber;
     }
 
     public String getTerm(){
         if(term==null)
             term = createTerm();
         return super.getTerm();
+    }
+
+    public boolean isNegative() {
+        return isNegative;
     }
 }

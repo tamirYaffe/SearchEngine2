@@ -1,5 +1,7 @@
 package SearchEngineTools.Term;
 
+import java.util.List;
+
 public class CurrencyTerm extends ATerm{
 
     protected NumberTerm numberTerm;
@@ -12,30 +14,51 @@ public class CurrencyTerm extends ATerm{
 
 
     protected String getValueTermString(){
-        char [] numberWithoutDecimal = numberTerm.getNumberWithoutDecimal();
+        List<Character> numberWithoutDecimal = numberTerm.getNumberWithoutDecimal();
         String afterNumber = "";
-        int digitsBeforeDecimal = numberTerm.isWholeNumber() ? numberWithoutDecimal.length : numberTerm.getLocationOfDecimal();
-        if(digitsBeforeDecimal > 7){
+        int digitsBeforeDecimal = numberTerm.isWholeNumber() ? numberWithoutDecimal.size() : numberTerm.getLocationOfDecimal();
+        if(digitsBeforeDecimal >= 7){
             digitsBeforeDecimal = digitsBeforeDecimal - 6;
             afterNumber = " M";
         }
-        int digitsToPrint = digitsBeforeDecimal==numberWithoutDecimal.length ? numberWithoutDecimal.length : numberWithoutDecimal.length+1;
+        int digitsToPrint = digitsBeforeDecimal==numberWithoutDecimal.size() ? numberWithoutDecimal.size() : numberWithoutDecimal.size()+1;
         StringBuilder term = new StringBuilder();
         for (int i = 0, j=0; i < digitsToPrint; i++) {
             if(i==digitsBeforeDecimal){
                 term.append(".");
             }
             else {
-                term.append(numberWithoutDecimal[j]);
+                term.append(numberWithoutDecimal.get(j));
                 j++;
             }
         }
-        term.append(afterNumber);
-        return term.toString();
+
+        String beforeNumber = numberTerm.isNegative() ? "-" : "";
+        String toReturn = digitsBeforeDecimal==numberWithoutDecimal.size() ? beforeNumber+term.toString()+afterNumber : beforeNumber+removeUnnecessaryDigits(term)+afterNumber;
+        return toReturn;
     }
 
     @Override
     protected String createTerm() {
         return getValueTermString()+" "+currency;
+    }
+
+    private static String removeUnnecessaryDigits(CharSequence s){
+        int lastNecessaryIndx = s.length()-1;
+        boolean necessary = false;
+        while (!necessary && lastNecessaryIndx>0){
+            if(s.charAt(lastNecessaryIndx)=='0'){
+                lastNecessaryIndx--;
+            }
+            else if(s.charAt(lastNecessaryIndx)=='.'){
+                lastNecessaryIndx--;
+                necessary=true;
+            }
+            else {
+                necessary = true;
+            }
+        }
+        String toReturn = s.toString();
+        return toReturn.substring(0,lastNecessaryIndx+1);
     }
 }

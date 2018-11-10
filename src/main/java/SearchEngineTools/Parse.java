@@ -1,6 +1,7 @@
 package SearchEngineTools;
 
 import SearchEngineTools.Term.*;
+import javafx.util.Pair;
 
 import java.util.*;
 
@@ -12,11 +13,11 @@ public class Parse {
 
     //all frases that depict a currency and their currency symbol
     //for example <U.S dollar, $>, <Dollars, $>
-    private Map<String, String> currencyTypes;
+    private ParsingHashMap currencyTypes;
 
     //all currency symbols the parser will recognize
     //for example $
-    private Collection<String> currencySymbols;
+    private Collection<Character> currencySymbols;
 
     //months and their values
     //for example <december, 12>
@@ -33,6 +34,9 @@ public class Parse {
 
     //stop words to be removed
     protected Collection<String> stopWords;
+
+    //characters to be removed from beginning and end of words
+    private Collection<Character> necessaryChars;
 
 
     /**
@@ -64,7 +68,7 @@ public class Parse {
      *
      * @return all symbols that represent currency (i.g $)
      */
-    private Collection<String> getCurrencySymbols(){
+    private Collection<Character> getCurrencySymbols(){
         return currencySymbols;
     }
 
@@ -88,9 +92,9 @@ public class Parse {
     }
 
     private void initializeCurrencyTypes() {
-        this.currencyTypes = new HashMap<>();
-        currencyTypes.put("Dollars","$");
-        currencyTypes.put("U.S Dollars","$");
+        this.currencyTypes = new ParsingHashMap();
+        currencyTypes.put("Dollars","Dollars");
+        currencyTypes.put("U.S Dollars","Dollars");
     }
     private void initializeDataStructures(){
         initializeValuesAfterNumber();
@@ -99,6 +103,14 @@ public class Parse {
         initializeMonths();
         initializeLastDaysInMonth();
         initializePercentWords();
+        initializeNecessaryChars();
+    }
+
+    private void initializeNecessaryChars() {
+        necessaryChars = new HashSet<>();
+        necessaryChars.add('+');
+        necessaryChars.add('-');
+        necessaryChars.addAll(currencySymbols);
     }
 
     private void initializePercentWords() {
@@ -146,7 +158,7 @@ public class Parse {
 
     private void initializeCurrencySymbols(){
         this.currencySymbols = new HashSet<>();
-        currencySymbols.add("$");
+        currencySymbols.add('$');
     }
 
     /////////////////////////////////////////////
@@ -156,8 +168,6 @@ public class Parse {
         Map<ATerm,Integer> occurrencesOfTerms = new HashMap<>();
         List<ATerm> terms=new ArrayList<>();
         List<String> tokens=tokenize(document);
-        //do text operations(remove unnecessary chars, change words by the assignment rules).
-        removeUnnecessaryChars(tokens);
         //get terms
         List<ATerm> next = null;
         do{
@@ -230,14 +240,37 @@ public class Parse {
     protected List<String> tokenize(List<String> document) {
         List<String> tokens=new LinkedList<>();
         document.forEach(line -> {
-            //String[]tokens = line.split(" |\\.|\\,");
             String[]lineTokens = line.split(" ");
-            lineTokens=Arrays.stream(lineTokens)
-                    .filter(s -> !s.equals(""))
-                    .toArray(String[]::new);
-            tokens.addAll(Arrays.asList(lineTokens));
+            //remove unnecessarry chars and add to list
+            for (int i = 0; i < lineTokens.length; i++) {
+                lineTokens[i] = removeUnnecessaryChars(lineTokens[i]);
+                tokens.add(lineTokens[i]);
+            }
+
         });
         return tokens;
+    }
+
+    private String removeUnnecessaryChars(String lineToken) {
+        int firstNecessary = 0;
+        int lastNecessary = lineToken.length()-1;
+        //find first necessary index
+       if(!necessaryChars.contains(lineToken.charAt(firstNecessary)) &&
+               (!(Character.isDigit(lineToken.charAt(firstNecessary)) ||
+                       Character.isLetter(lineToken.charAt(firstNecessary))))/*!(Character.isDigit(lineToken.charAt(firstNecessary)) ||//first digit is not digit
+               Character.isLetter(lineToken.charAt(firstNecessary)) ||//first digit is not letter
+               currencySymbols.contains(""+lineToken.charAt(firstNecessary)))&&
+            && !necessaryChars.contains(lineToken.charAt(firstNecessary))*/){
+           firstNecessary++;
+       }
+        if(!(Character.isDigit(lineToken.charAt(lastNecessary)) ||//first digit is not digit
+                Character.isLetter(lineToken.charAt(lastNecessary)) ||//first digit is not letter
+                currencySymbols.contains(""+lineToken.charAt(lastNecessary)))){ //first digit is not currency
+            lastNecessary--;
+        }
+        if(firstNecessary!=0 || lastNecessary!=lineToken.length()-1)
+            lineToken = lineToken.substring(firstNecessary,lastNecessary+1);
+        return lineToken;
     }
 
 
@@ -260,13 +293,13 @@ public class Parse {
         catch (Exception e){
             //check if is because of commas
             String [] split = s.split(",");
-            String toCheck = "";
+            StringBuilder toCheck = new StringBuilder();
             for (int i = 0; i < split.length; i++) {
-                toCheck+=split[i];
+                toCheck.append(split[i]);
             }
             //check if it is a number
             try {
-                float toReturn = Float.parseFloat(toCheck);
+                float toReturn = Float.parseFloat(toCheck.toString());
                 float[] floats = {toReturn};
                 return floats;
             }
@@ -305,6 +338,139 @@ public class Parse {
         return new FractionTerm(numerator,denominator);
     }
 
+    private void AddNextNumberTerm(List<String> tokens, ATerm nextTerm, List<ATerm> toReturn){
+        //get next word
+        if(!tokens.isEmpty()) {
+            String nextToken = tokens.get(0);
+            //check if percentage
+            if (percentWords.contains(nextToken)) {
+                nextTerm = new PercentageTerm((NumberTerm)nextTerm);
+                tokens.remove(0);
+            }
+            //check if month
+            else if((((NumberTerm) nextTerm).isInteger(((NumberTerm) nextTerm))) //number is integer
+                    && getMonthWords().contains(nextToken) && //next word is month
+                    (((NumberTerm) nextTerm).getValueOfNumber()>0) && //number is at least one
+                    ((NumberTerm) nextTerm).getValueOfNumber()<=lastDayInMonth.get(months.get(nextToken)) //number is smaller than last day in month
+            ){
+                nextTerm = new DateTerm(months.get(nextToken),(int)((NumberTerm) nextTerm).getValueOfNumber());
+                tokens.remove(0);
+            }
+            else {
+                boolean isFraction = false;
+                //check if value
+                if (getValueKeywords().contains(nextToken)) {
+                    Value val = valuesAfterNumber.get(nextToken);
+                    ((NumberTerm) nextTerm).multiply(val);
+                    //remove keyword after use
+                    tokens.remove(0);
+
+                }
+                //check if fraction
+                else if(isFraction(nextToken)){
+                    nextTerm = new CompoundFractionTerm((NumberTerm)nextTerm,getFractionTerm(nextToken));
+                    tokens.remove(0);
+                    isFraction = true;
+                }
+                //check if currency
+                Pair<String,Integer> currencyNameAndLocation = null;
+                if(!tokens.isEmpty()) {
+                    currencyNameAndLocation = getNextCurrencyTerm(tokens);
+                }
+                if(currencyNameAndLocation != null){
+                    nextTerm = isFraction ? new CompoundFractionCurrencyTerm((CompoundFractionTerm)nextTerm, this.currencyTypes.get(currencyNameAndLocation.getKey()))
+                            : new CurrencyTerm((NumberTerm)nextTerm, currencyTypes.get(currencyNameAndLocation.getKey()));
+                    for (int i = 0; i<=currencyNameAndLocation.getValue(); i++){
+                        tokens.remove(0);
+                    }
+                }
+            }
+        }
+        //no suitable next word found, return number
+        toReturn.add(nextTerm);
+    }
+
+    private void addWordTerm(List<String> tokens, String token,List<ATerm> toReturn){
+        ATerm nextTerm = null;
+        //check percentage
+        if(isPercentage(token)){
+            nextTerm = getPercentageTerm(token);
+            toReturn.add(nextTerm);
+            return;
+        }
+        //check currency
+        else if(isCurrency(token)){
+            nextTerm = getCurrencyTerm(token);
+            toReturn.add(nextTerm);
+            return;
+        }
+        //check month
+        else if(getMonthWords().contains(token)){
+            String nextToken = tokens.isEmpty() ? null : tokens.get(1);
+            if(isNumber(nextToken) && isInteger(nextToken)){
+                int day = Integer.parseInt(nextToken);
+                if(day>0 && day<lastDayInMonth.get(token)){
+                    nextTerm = new DateTerm(months.get(token),day);
+                    toReturn.add(nextTerm);
+                    return;
+                }
+            }
+        }
+        //check hyphenated word
+        else if(isHyphenatedWord(token)){
+            toReturn.addAll(getHyphenatedTokens(token));
+            return;
+        }
+        boolean isNumber = false;
+        boolean isFraction = false;
+        //check number with value
+        if(isNumberWithValue(token)){
+            isNumber =true;
+            nextTerm = splitWord(token);
+            //if list is now empty, return, else switch token to next word
+            if(tokens.isEmpty()){
+                toReturn.add(nextTerm);
+                return;
+            }
+            else{
+                token = tokens.get(0);
+            }
+        }
+        //check fraction
+        if(isFraction(token)){
+            isFraction = true;
+            nextTerm = isNumber ? new CompoundFractionTerm((NumberTerm) nextTerm, getFractionTerm(token)) : getFractionTerm(token);
+            isNumber = true;
+            tokens.remove(0);
+            //if list is now empty, return, else switch token to next word
+            if(tokens.isEmpty()){
+                toReturn.add(nextTerm);
+                return;
+            }
+            else{
+                token = tokens.get(0);
+            }
+        }
+        //check currency
+        if(isNumber && getCurrencyStrings().contains(token)){
+            nextTerm = isFraction ? new CompoundFractionCurrencyTerm((CompoundFractionTerm) nextTerm,token) : new CurrencyTerm((NumberTerm) nextTerm,token);
+            tokens.remove(0);
+            toReturn.add(nextTerm);
+            return;
+        }
+
+        //no special case
+        //check not a stop word
+        if(isStopWord(token) || token.length()==0 || (token.length()==1 && (!(Character.isLetter(token.charAt(0)) || Character.isDigit(token.charAt(0))))))
+            return;
+        toReturn.add(new WordTerm(token));
+    }
+
+    private boolean isStopWord(String token) {
+        String lowerCaseToken = token.toLowerCase();
+        return stopWords.contains(lowerCaseToken);
+    }
+
     protected List<ATerm> getNextTerm(List<String> tokens){
         List<ATerm> toReturn = new ArrayList<>();
         ATerm nextTerm = null;
@@ -317,125 +483,11 @@ public class Parse {
         //if is number
         if(isNumber( token)) {
             nextTerm = new NumberTerm(token);
-            //get next word
-            if(!tokens.isEmpty()) {
-                String nextToken = tokens.get(0);
-                //check if percentage
-                if (percentWords.contains(nextToken)) {
-                    nextTerm = new PercentageTerm((NumberTerm)nextTerm);
-                    tokens.remove(0);
-                }
-                //check if month
-                else if((((NumberTerm) nextTerm).isInteger(((NumberTerm) nextTerm))) //number is integer
-                        && getMonthWords().contains(nextToken) && //next word is month
-                        (((NumberTerm) nextTerm).getValueOfNumber()>0) && //number is at least one
-                        ((NumberTerm) nextTerm).getValueOfNumber()<=lastDayInMonth.get(months.get(nextToken)) //number is smaller than last day in month
-                ){
-                    nextTerm = new DateTerm(months.get(nextToken),(int)((NumberTerm) nextTerm).getValueOfNumber());
-                    tokens.remove(0);
-                }
-                else {
-                    boolean isFraction = false;
-                    //check if value
-                    if (getValueKeywords().contains(nextToken)) {
-                        Value val = valuesAfterNumber.get(nextToken);
-                        ((NumberTerm) nextTerm).multiply(val);
-                        //remove keyword after use
-                        tokens.remove(0);
-
-                    }
-                    //check if fraction
-                    else if(isFraction(nextToken)){
-                        nextTerm = new CompoundFractionTerm((NumberTerm)nextTerm,getFractionTerm(nextToken));
-                        tokens.remove(0);
-                        isFraction = true;
-                    }
-                    //check if currency
-                    if(!tokens.isEmpty()) {
-                        nextToken = tokens.get(0);
-                    }
-                    if(getCurrencyStrings().contains(nextToken)){
-                        nextTerm = isFraction ? new CompoundFractionCurrencyTerm((CompoundFractionTerm)nextTerm, nextToken)
-                                : new CurrencyTerm((NumberTerm)nextTerm, nextToken);
-                        tokens.remove(0);
-                    }
-                }
-            }
-            //no suitable next word found, return number
-            toReturn.add(nextTerm);
+            AddNextNumberTerm(tokens,nextTerm,toReturn);
         }
         //word
         else {
-            //check percentage
-            if(isPercentage(token)){
-                nextTerm = getPercentageTerm(token);
-                toReturn.add(nextTerm);
-                return toReturn;
-            }
-            //check currency
-            else if(isCurrency(token)){
-                nextTerm = getCurrencyTerm(token);
-                toReturn.add(nextTerm);
-                return toReturn;
-            }
-            //check month
-            else if(getMonthWords().contains(token)){
-                String nextToken = tokens.isEmpty() ? null : tokens.get(1);
-                if(isNumber(nextToken) && isInteger(nextToken)){
-                    int day = Integer.parseInt(nextToken);
-                    if(day>0 && day<lastDayInMonth.get(token)){
-                        nextTerm = new DateTerm(months.get(token),day);
-                        toReturn.add(nextTerm);
-                        return toReturn;
-                    }
-                }
-            }
-            //check hyphenated word
-            else if(isHyphenatedWord(token)){
-                toReturn.addAll(getHyphenatedTokens(token));
-                return toReturn;
-            }
-            boolean isNumber = false;
-            boolean isFraction = false;
-            //check number with value
-            if(isNumberWithValue(token)){
-                isNumber =true;
-                nextTerm = splitWord(token);
-                //if list is now empty, return, else switch token to next word
-                if(tokens.isEmpty()){
-                    toReturn.add(nextTerm);
-                    return toReturn;
-                }
-                else{
-                    token = tokens.get(0);
-                }
-            }
-            //check fraction
-            if(isFraction(token)){
-                isFraction = true;
-                nextTerm = isNumber ? new CompoundFractionTerm((NumberTerm) nextTerm, getFractionTerm(token)) : getFractionTerm(token);
-                isNumber = true;
-                tokens.remove(0);
-                //if list is now empty, return, else switch token to next word
-                if(tokens.isEmpty()){
-                    toReturn.add(nextTerm);
-                    return toReturn;
-                }
-                else{
-                    token = tokens.get(0);
-                }
-            }
-            //check currency
-            if(isNumber && getCurrencyStrings().contains(token)){
-                nextTerm = isFraction ? new CompoundFractionCurrencyTerm((CompoundFractionTerm) nextTerm,token) : new CurrencyTerm((NumberTerm) nextTerm,token);
-                tokens.remove(0);
-                toReturn.add(nextTerm);
-                return toReturn;
-            }
-
-            //no special case
-            nextTerm = new WordTerm(token);
-            toReturn.add(nextTerm);
+            addWordTerm(tokens,token,toReturn);
         }
         return toReturn;
     }
@@ -539,6 +591,38 @@ public class Parse {
         return null;
     }
 
+    private Pair<String, Integer> getNextCurrencyTerm(List<String> tokens){
+        Pair<String,Integer> toReturn = null;
+        String currencyToCheck = "";
+        Collection<String> currencies = currencyTypes.keySet();
+        for (int i = 0; i < currencyTypes.getWordsInLongestKey() && i<=tokens.size(); i++) {
+            String toAdd = tokens.get(i);
+            if(i!=0)
+                currencyToCheck+=(" "+toAdd);
+            else
+                currencyToCheck+=toAdd;
+            if(getCurrencyStrings().contains(currencyToCheck)) {
+                toReturn = new Pair<>(currencyToCheck, i);
+                break;
+            }
+        }
+        return toReturn;
+    }
+
+    private static boolean stringsAreEqual(String s1, String s2){
+        if(s1==null && s2==null)
+            return true;
+        if(s1==null || s2==null)
+            return false;
+        if(s1.length()==s2.length()){
+            for (int i = 0; i < s1.length(); i++) {
+                if(s1.charAt(i)!=s2.charAt(i))
+                    return false;
+            }
+            return true;
+        }
+        return false;
+    }
 
 
 }
