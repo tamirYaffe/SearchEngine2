@@ -13,7 +13,7 @@ public class CompoundFractionTerm extends FractionTerm {
     }
 
     @Override
-    public String getTerm() {
+    protected String createTerm() {
         return whole.getTerm() + " "+ super.getTerm();
     }
 }

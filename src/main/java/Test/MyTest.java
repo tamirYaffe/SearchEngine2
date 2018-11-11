@@ -47,8 +47,8 @@ public class MyTest {
             public void run()
             {
                 System.out.println("task "+docID+" started");
-                List<String> docTerms=parse.parseDocument(readFile.extractFileText(new Document(docID).getDocumentsLines()));
-                syncTermsList.add(new Pair<>(docTerms,docID));
+               // List<String> docTerms=parse.parseDocument(readFile.extractFileText(new Document(docID).getDocumentsLines()));
+               // syncTermsList.add(new Pair<>(docTerms,docID));
                 System.out.println("task "+docID+" finished");
             }
         }

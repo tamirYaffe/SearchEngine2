@@ -18,8 +18,9 @@ public class FractionTerm extends ATerm {
         this.denominator = denominator;
     }
 
+
     @Override
-    public String getTerm() {
-        return numerator+"/"+denominator;
+    protected String createTerm() {
+        return numerator.getTerm()+"/"+denominator.getTerm();
     }
 }
