@@ -7,7 +7,7 @@ public class PercentageTerm extends NumberTerm {
     }
 
     @Override
-    public String getTerm() {
-        return super.getTerm()+"%";
+    protected String createTerm() {
+        return super.createTerm()+"%";
     }
 }

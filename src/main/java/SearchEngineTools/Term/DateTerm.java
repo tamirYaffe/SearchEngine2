@@ -10,8 +10,9 @@ public class DateTerm extends ATerm {
         this.month = month;
     }
 
+
     @Override
-    public String getTerm() {
+    protected String createTerm() {
         return month+"-"+day;
     }
 }

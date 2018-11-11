@@ -360,6 +360,29 @@ public class Stemmer
         i_end = k+1; i = 0;
     }
 
+
+    public String stem(CharSequence s){
+        char[] toStem = s.toString().toCharArray();
+        for (int l = 0; l < toStem.length; l++) {
+            this.add(toStem[i]);
+        }
+        this.stem();
+        String toReturn = copyString(copyString(toString()));
+        //re-initialize values of stemmer
+        b = new char[INC];
+        i = 0;
+        i_end = 0;
+        return toReturn;
+
+    }
+
+    private String copyString(String s){
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            stringBuilder.append(s.charAt(i));
+        }
+        return stringBuilder.toString();
+    }
     /** Test program for demonstrating the Stemmer.  It reads text from a
      * a list of files, stems each word, and writes the result to standard
      * output. Note that the word stemmed is expected to be in lower case:
@@ -368,7 +391,12 @@ public class Stemmer
      */
     public static void main(String[] args)
     {
-        char[] w = new char[501];
+        Stemmer stemmer = new Stemmer();
+        String s = "running";
+        String s1 = "eating";
+        System.out.println(stemmer.stem(s));
+        System.out.println(stemmer.stem(s1));
+        /*char[] w = new char[501];
         Stemmer s = new Stemmer();
         for (int i = 0; i < args.length; i++)
             try
@@ -391,21 +419,21 @@ public class Stemmer
                             if (!Character.isLetter((char) ch))
                             {
                                 /* to test add(char ch) */
-                                for (int c = 0; c < j; c++) s.add(w[c]);
+                               /* for (int c = 0; c < j; c++) s.add(w[c]);
 
                                 /* or, to test add(char[] w, int j) */
                                 /* s.add(w, j); */
 
-                                s.stem();
+                              /*  s.stem();
                                 {  String u;
 
                                     /* and now, to test toString() : */
-                                    u = s.toString();
+                                /*    u = s.toString();
 
                                     /* to test getResultBuffer(), getResultLength() : */
                                     /* u = new String(s.getResultBuffer(), 0, s.getResultLength()); */
 
-                                    System.out.print(u);
+                              /*      System.out.print(u);
                                 }
                                 break;
                             }
@@ -423,6 +451,6 @@ public class Stemmer
             catch (FileNotFoundException e)
             {  System.out.println("file " + args[i] + " not found");
                 break;
-            }
+            }*/
     }
 }
