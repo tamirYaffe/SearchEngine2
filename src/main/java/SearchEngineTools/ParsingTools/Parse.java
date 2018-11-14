@@ -1,6 +1,6 @@
-package SearchEngineTools;
+package SearchEngineTools.ParsingTools;
 
-import SearchEngineTools.Term.*;
+import SearchEngineTools.ParsingTools.Term.*;
 import javafx.util.Pair;
 
 import java.util.*;
@@ -42,7 +42,15 @@ public class Parse {
 
 
     /**
-     * default constructor
+     * Initializes parser
+     * @param stopWords - words to ignore
+     */
+    public Parse(Collection<String> stopWords){
+        initializeDataStructures();
+        this.stopWords = stopWords;
+    }
+    /**
+     * default constructor, no list of stop words
      */
     //initializes data structures
     public Parse(){
@@ -687,6 +695,72 @@ public class Parse {
         }
         return toReturn;
     }
+
+    /**
+     * list of words and the value they represent
+     * @param values
+     */
+    public void setValuesAfter(Map<String,Value> values){
+        this.valuesAfterNumber = values;
+    }
+
+    /**
+     * word will no longer be considered a value
+     * @param valueToRemove
+     */
+    public void removeValue(String valueToRemove){
+        valuesAfterNumber.remove(valueToRemove);
+    }
+    /**
+     * add word that represents a value
+     * i.g (thousand, THOUSAND)
+     * @param word
+     * @param value
+     */
+    public void addValueAfter(String word, Value value){
+        this.valuesAfterNumber.put(word,value);
+    }
+
+    /**
+     * set currency words. for example <U.S Dollar, Dollar>
+     * @param currencyTypes, Map with of word as key, and the represented currency as value
+     */
+    public void setCurrencyTypes(Map<String,String> currencyTypes){
+        if(currencyTypes instanceof ParsingHashMap){
+            this.currencyTypes = (ParsingHashMap) currencyTypes;
+        }
+        else
+            this.currencyTypes = new ParsingHashMap(currencyTypes);
+    }
+
+
+    /**
+     * words that represent a percent
+     * @param percentWords
+     */
+    public void setPercentWords(Collection<String> percentWords){
+        this.percentWords = percentWords;
+    }
+
+    /**
+     * chars not to ignore at the beginning and end of words, all other chars will be ignored
+     * @param necessaryChars
+     */
+    public void setNecessaryChars(Collection<Character> necessaryChars){
+        this.necessaryChars = necessaryChars;
+    }
+
+    /**
+     * sets words that represent years, and the year they represent
+     * @param years
+     */
+    public void setYears(Map<String,String> years){
+        if (years instanceof ParsingHashMap)
+            this.years = (ParsingHashMap) years;
+        else
+            this.years = new ParsingHashMap(years);
+    }
+
 
 
 

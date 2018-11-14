@@ -1,6 +1,8 @@
 package SearchEngineTools;
 
-import SearchEngineTools.Term.ATerm;
+import SearchEngineTools.Indexer;
+import SearchEngineTools.ParsingTools.Parse;
+import SearchEngineTools.ParsingTools.Term.ATerm;
 
 import java.io.*;
 import java.nio.charset.Charset;

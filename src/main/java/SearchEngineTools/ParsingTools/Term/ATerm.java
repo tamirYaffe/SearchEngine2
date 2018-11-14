@@ -1,4 +1,4 @@
-package SearchEngineTools.Term;
+package SearchEngineTools.ParsingTools.Term;
 
 public abstract class ATerm  implements Comparable<ATerm>{
 
