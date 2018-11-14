@@ -10,8 +10,7 @@ public class PostingEntry {
         this.termTF = termTF;
         String docIDS=""+docID;
         String termTFS=""+termTF;
-        sizeInBytes+=docIDS.length()+termTFS.length();
-        sizeInBytes+=2;
+        sizeInBytes+=docIDS.length()+termTFS.length()+2;
     }
 
     public int getSizeInBytes() {
