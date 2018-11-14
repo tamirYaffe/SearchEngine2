@@ -1,6 +1,6 @@
 package SearchEngineTools;
 
-import org.json.simple.JSONObject;
+import SearchEngineTools.Term.ATerm;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -17,7 +17,7 @@ public class ReadFile {
 
     public ReadFile() {
         parse=new Parse();
-        indexer=new Indexer();
+        indexer=new Indexer(7500);
     }
 
     public int listAllFiles(String path) {
@@ -32,6 +32,13 @@ public class ReadFile {
                     }
                 }
             });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //write remaining posting lists to disk
+        indexer.sortAndWriteInvertedIndexToDisk();
+        try {
+            indexer.mergeBlocks();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -103,12 +110,12 @@ public class ReadFile {
                 docName=extractDocID(line);
             if (line.equals("</DOC>")) {
                 createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
-                //processdocument(docLines, numOfDocs);
+                processdocument(docLines, numOfDocs);
                 startLineNumInt=endLineNumInt+1;
                 numOfLinesInt=0;
                 docLines.clear();
                 numOfDocs++;
-                System.out.println(numOfDocs);
+                System.out.println("num of docs: "+numOfDocs);
             }
         }
 
@@ -121,9 +128,8 @@ public class ReadFile {
     }
 
     private void processdocument(List<String> doc, int docID) {
-        //createDoc(filePath,startLineNum,endLineNum,docID);
-        //List<String> terms=parse.parseDocument(extractFileText(doc));
-        //indexer.createInvertedIndex(terms,docID);
+        Collection<ATerm> terms=parse.parseDocument(extractFileText(doc));
+        indexer.createInvertedIndex(terms.iterator(),docID);
     }
 
     private void createDoc(Path filePath, int startLineNum, int numOfLines, int docID) {
