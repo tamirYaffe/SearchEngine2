@@ -1,7 +1,6 @@
 package SearchEngineTools;
 
 import SearchEngineTools.Term.ATerm;
-import org.json.simple.JSONObject;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -18,7 +17,7 @@ public class ReadFile {
 
     public ReadFile() {
         parse=new Parse();
-        indexer=new Indexer(510);
+        indexer=new Indexer(7500);
     }
 
     public int listAllFiles(String path) {
@@ -33,6 +32,13 @@ public class ReadFile {
                     }
                 }
             });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //write remaining posting lists to disk
+        indexer.sortAndWriteInvertedIndexToDisk();
+        try {
+            indexer.mergeBlocks();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -123,7 +129,6 @@ public class ReadFile {
 
     private void processdocument(List<String> doc, int docID) {
         Collection<ATerm> terms=parse.parseDocument(extractFileText(doc));
-        terms.size();
         indexer.createInvertedIndex(terms.iterator(),docID);
     }
 
