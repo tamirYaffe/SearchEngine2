@@ -1,53 +1,26 @@
 package SearchEngineTools;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 public class Document {
     //static vars
     public static String corpusPath;
 
-
+    private int docNum;
     private String path;
     private Long startLine;
     private Long numOfLines;
+    private int max_tf;
+    private int numOfUniqeTerms;
 
     public Document(int docNum) {
-        String[] line ;
-        try (BufferedReader br = new BufferedReader(new FileReader("Documents.txt"))) {
-            for (int i = 0; i < docNum-1; i++)
-                br.readLine();
-            /*
-            line = br.readLine();
-            JSONParser parser = new JSONParser();
-            JSONObject json = (JSONObject) parser.parse(line);
-            path = (String) json.get("filePath");
-            startLine= (Long) json.get("startLineNum");
-            numOfLines=(Long) json.get("numOfLines");
-            */
-            line=br.readLine().split(" ");
-            String fileName=line[0];
-            startLine= Long.valueOf(line[1]);
-            numOfLines= Long.valueOf(line[2]);
-            path=corpusPath+fileName;
-            getDocumentsLines();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        this.docNum=docNum;
     }
 
     public List<String> getDocumentsLines() {
+        readDocPointerInfo();
         List<String> fileList = new ArrayList<>();
         BufferedReader reader;
         try {
@@ -65,18 +38,36 @@ public class Document {
         return fileList;
     }
 
-    public void getDocumentsLinesAlt() {
-        List<String> fileList=new ArrayList<>();
-        try {
-            RandomAccessFile file = new RandomAccessFile(path, "rw");
-            file.seek(startLine);
-            for (int i = 0; i <numOfLines ; i++) {
-                fileList.add(file.readLine());
-            }
-            file.close();
+    private void readDocPointerInfo() {
+        String[] line ;
+        try (BufferedReader br = new BufferedReader(new FileReader("Documents.txt"))) {
+            for (int i = 0; i < docNum-1; i++)
+                br.readLine();
+            line=br.readLine().split(" ");
+            String fileName=line[0];
+            startLine= Long.valueOf(line[1]);
+            numOfLines= Long.valueOf(line[2]);
+            path=corpusPath+fileName;
+            getDocumentsLines();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateDocInfo(int termOccurrences) {
+        if(termOccurrences>max_tf)
+            max_tf=termOccurrences;
+        if(termOccurrences==1)
+            numOfUniqeTerms++;
+    }
+    public void writeDocInfoToDisk(){
+        try(FileWriter fw = new FileWriter("DocumentsInfo.txt", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            PrintWriter out = new PrintWriter(bw))
+        {
+            out.println(max_tf+" "+numOfUniqeTerms);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println(fileList);
     }
 }
