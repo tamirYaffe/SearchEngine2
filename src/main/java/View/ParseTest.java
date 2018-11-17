@@ -1,20 +1,17 @@
 package View;
 
 import Controller.Controller;
-import SearchEngineTools.Parse;
-import SearchEngineTools.ParseWithStemming;
-import SearchEngineTools.Term.ATerm;
+import SearchEngineTools.ParsingTools.Parse;
+import SearchEngineTools.ParsingTools.ParseWithStemming;
+import SearchEngineTools.ParsingTools.Term.ATerm;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 
 import java.awt.*;
 import java.util.ArrayList;

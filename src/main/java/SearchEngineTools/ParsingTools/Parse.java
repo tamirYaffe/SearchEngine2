@@ -1,6 +1,6 @@
-package SearchEngineTools;
+package SearchEngineTools.ParsingTools;
 
-import SearchEngineTools.Term.*;
+import SearchEngineTools.ParsingTools.Term.*;
 import javafx.util.Pair;
 
 import java.util.*;
@@ -42,7 +42,15 @@ public class Parse {
 
 
     /**
-     * default constructor
+     * Initializes parser
+     * @param stopWords - words to ignore
+     */
+    public Parse(Collection<String> stopWords){
+        initializeDataStructures();
+        this.stopWords = stopWords;
+    }
+    /**
+     * default constructor, no list of stop words
      */
     //initializes data structures
     public Parse(){
@@ -302,7 +310,8 @@ public class Parse {
             //remove unnecessarry chars and add to list
             for (int i = 0; i < lineTokens.length; i++) {
                 lineTokens[i] = removeUnnecessaryChars(lineTokens[i]);
-                tokens.add(lineTokens[i]);
+                if(lineTokens[i]!=null)
+                    tokens.add(lineTokens[i]);
             }
 
         });
@@ -310,25 +319,28 @@ public class Parse {
     }
 
     private String removeUnnecessaryChars(String lineToken) {
+        if(lineToken==null || lineToken.equals(""))
+            return null;
         int firstNecessary = 0;
         int lastNecessary = lineToken.length()-1;
         //find first necessary index
-       if(!necessaryChars.contains(lineToken.charAt(firstNecessary)) &&
-               (!(Character.isDigit(lineToken.charAt(firstNecessary)) ||
-                       Character.isLetter(lineToken.charAt(firstNecessary))))/*!(Character.isDigit(lineToken.charAt(firstNecessary)) ||//first digit is not digit
-               Character.isLetter(lineToken.charAt(firstNecessary)) ||//first digit is not letter
-               currencySymbols.contains(""+lineToken.charAt(firstNecessary)))&&
-            && !necessaryChars.contains(lineToken.charAt(firstNecessary))*/){
+       while (firstNecessary<lineToken.length()-1 && !necessaryChars.contains(lineToken.charAt(firstNecessary)) && (!(Character.isDigit(lineToken.charAt(firstNecessary)) || Character.isLetter(lineToken.charAt(firstNecessary))))){
            firstNecessary++;
        }
-        if(!(Character.isDigit(lineToken.charAt(lastNecessary)) ||//first digit is not digit
+       if(firstNecessary>lastNecessary)
+           return null;
+        while (lastNecessary>0 && !(Character.isDigit(lineToken.charAt(lastNecessary)) ||//first digit is not digit
                 Character.isLetter(lineToken.charAt(lastNecessary)) ||//first digit is not letter
                 currencySymbols.contains(""+lineToken.charAt(lastNecessary)))){ //first digit is not currency
             lastNecessary--;
         }
+        if(firstNecessary>lastNecessary)
+            return null;
         if(firstNecessary!=0 || lastNecessary!=lineToken.length()-1)
             lineToken = lineToken.substring(firstNecessary,lastNecessary+1);
-        return lineToken;
+        if(lineToken.length()>=2 && lineToken.substring(lineToken.length()-2,lineToken.length()).equals("'s"))
+            lineToken = lineToken.substring(0,lineToken.length()-2);
+        return lineToken.length()>0 ? lineToken : null;
     }
 
 
@@ -475,19 +487,20 @@ public class Parse {
         }
         //check month
         else if(getMonthWords().contains(token)){
-            String nextToken = tokens.isEmpty() ? null : tokens.get(1);
-            if(isNumber(nextToken) && isInteger(nextToken)){
+            String nextToken = tokens.isEmpty() ? null : tokens.get(0);
+            if(nextToken!=null && isNumber(nextToken) && isInteger(nextToken)){
                 int day = Integer.parseInt(nextToken);
-                if(day>0 && day<lastDayInMonth.get(token)){
+                if(day>0 && day<lastDayInMonth.get(months.get(token))){
                     nextTerm = new DateTerm(months.get(token),day);
                     toReturn.add(nextTerm);
+                    tokens.remove(0);
                     return;
                 }
             }
         }
         //check hyphenated word
         else if(isHyphenatedWord(token)){
-            toReturn.addAll(getHyphenatedTokens(token));
+            toReturn.addAll(getHyphenatedTokens(token,"-"));
             return;
         }
         boolean isNumber = false;
@@ -509,8 +522,9 @@ public class Parse {
         if(isFraction(token)){
             isFraction = true;
             nextTerm = isNumber ? new CompoundFractionTerm((NumberTerm) nextTerm, getFractionTerm(token)) : getFractionTerm(token);
+            if(isNumber)
+                tokens.remove(0);
             isNumber = true;
-            tokens.remove(0);
             //if list is now empty, return, else switch token to next word
             if(tokens.isEmpty()){
                 toReturn.add(nextTerm);
@@ -546,7 +560,6 @@ public class Parse {
         //if list is empty, no tokens
         if(tokens.size() == 0)
             return null;
-
         String token = tokens.get(0);
         tokens.remove(0);
         //if is number
@@ -561,12 +574,13 @@ public class Parse {
         return toReturn;
     }
 
-    private List<ATerm> getHyphenatedTokens(String token) {
+    private List<ATerm> getHyphenatedTokens(String token, String delimiter) {
         List<ATerm> toReturn = new ArrayList<>();
         toReturn.add(new WordTerm(token));
-        String[] words= token.split("-");
+        String[] words= token.split(delimiter);
         List<String> individualWords = new ArrayList<>(words.length);
         for (int i = 0; i < words.length; i++) {
+            words[i] = removeUnnecessaryChars(words[i]);
             if(words[i]!=null && words[i].length()>0)
                 individualWords.add(words[i]);
         }
@@ -623,7 +637,7 @@ public class Parse {
                 pointer++;
         }
         //check if is number and word after it represents value
-        if(pointer>0){
+        if(pointer>0 && pointer<s.length()){
             String numString = s.substring(0,pointer+1);
             String word = s.substring(pointer+1);
             if(isNumber(numString) && getValueKeywords().contains(word))
@@ -687,6 +701,72 @@ public class Parse {
         }
         return toReturn;
     }
+
+    /**
+     * list of words and the value they represent
+     * @param values
+     */
+    public void setValuesAfter(Map<String,Value> values){
+        this.valuesAfterNumber = values;
+    }
+
+    /**
+     * word will no longer be considered a value
+     * @param valueToRemove
+     */
+    public void removeValue(String valueToRemove){
+        valuesAfterNumber.remove(valueToRemove);
+    }
+    /**
+     * add word that represents a value
+     * i.g (thousand, THOUSAND)
+     * @param word
+     * @param value
+     */
+    public void addValueAfter(String word, Value value){
+        this.valuesAfterNumber.put(word,value);
+    }
+
+    /**
+     * set currency words. for example <U.S Dollar, Dollar>
+     * @param currencyTypes, Map with of word as key, and the represented currency as value
+     */
+    public void setCurrencyTypes(Map<String,String> currencyTypes){
+        if(currencyTypes instanceof ParsingHashMap){
+            this.currencyTypes = (ParsingHashMap) currencyTypes;
+        }
+        else
+            this.currencyTypes = new ParsingHashMap(currencyTypes);
+    }
+
+
+    /**
+     * words that represent a percent
+     * @param percentWords
+     */
+    public void setPercentWords(Collection<String> percentWords){
+        this.percentWords = percentWords;
+    }
+
+    /**
+     * chars not to ignore at the beginning and end of words, all other chars will be ignored
+     * @param necessaryChars
+     */
+    public void setNecessaryChars(Collection<Character> necessaryChars){
+        this.necessaryChars = necessaryChars;
+    }
+
+    /**
+     * sets words that represent years, and the year they represent
+     * @param years
+     */
+    public void setYears(Map<String,String> years){
+        if (years instanceof ParsingHashMap)
+            this.years = (ParsingHashMap) years;
+        else
+            this.years = new ParsingHashMap(years);
+    }
+
 
 
 

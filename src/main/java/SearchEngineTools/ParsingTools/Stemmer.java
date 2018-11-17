@@ -1,4 +1,4 @@
-package SearchEngineTools;
+package SearchEngineTools.ParsingTools;
 
 /*
 
@@ -33,8 +33,6 @@ package SearchEngineTools;
    Release 4
 
 */
-
-import java.io.*;
 
 /**
  * Stemmer, implementing the Porter Stemming Algorithm

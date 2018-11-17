@@ -1,7 +1,7 @@
-package SearchEngineTools;
+package SearchEngineTools.ParsingTools;
 
-import SearchEngineTools.Term.ATerm;
-import SearchEngineTools.Term.WordTerm;
+import SearchEngineTools.ParsingTools.Term.ATerm;
+import SearchEngineTools.ParsingTools.Term.WordTerm;
 
 import java.util.*;
 

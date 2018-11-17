@@ -1,4 +1,4 @@
-package SearchEngineTools.Term;
+package SearchEngineTools.ParsingTools.Term;
 
 public class CompoundFractionTerm extends FractionTerm {
     private  NumberTerm whole;
