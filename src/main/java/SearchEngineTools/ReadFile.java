@@ -13,17 +13,18 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public class ReadFile {
-    private  static int numOfDocs;
+    private static int numOfDocs;
     private Parse parse;
     private Indexer indexer;
 
+
     public ReadFile() {
-        parse=new Parse();
-        indexer=new Indexer(7500);
+        parse = new Parse();
+        indexer = new Indexer(4000);
     }
 
     public int listAllFiles(String path) {
-        Document.corpusPath=path;
+        Document.corpusPath = path;
         try (Stream<Path> paths = Files.walk(Paths.get(path))) {
             paths.forEach(filePath -> {
                 if (Files.isRegularFile(filePath)) {
@@ -38,12 +39,14 @@ public class ReadFile {
             e.printStackTrace();
         }
         //write remaining posting lists to disk
+        /*
         indexer.sortAndWriteInvertedIndexToDisk();
         try {
             indexer.mergeBlocks();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        */
         return numOfDocs;
     }
 
@@ -61,8 +64,8 @@ public class ReadFile {
         */
         BufferedReader br = null;
         FileReader fr = null;
-        List<String> fileList=new ArrayList<>();
-        String line=null;
+        List<String> fileList = new ArrayList<>();
+        String line = null;
         try {
 
             //br = new BufferedReader(new FileReader(FILENAME));
@@ -102,22 +105,23 @@ public class ReadFile {
         int startLineNumInt = 0;
         int endLineNumInt = 0;
         int numOfLinesInt = 0;
-        int s=0;
-        for(String line:fileList) {
+        int s = 0;
+        for (String line : fileList) {
             docLines.add(line);
             endLineNumInt++;
             numOfLinesInt++;
             //endingPoint.addAndGet(line.getBytes().length+1);
             if (line.contains("<DOCNO>"))
-                docName=extractDocID(line);
+                docName = extractDocID(line);
             if (line.equals("</DOC>")) {
-                createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
-                processdocument(docLines, numOfDocs);
-                startLineNumInt=endLineNumInt+1;
-                numOfLinesInt=0;
+                //createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
+                //processdocument(docLines, numOfDocs);
+                extractDocCity(docLines);
+                startLineNumInt = endLineNumInt + 1;
+                numOfLinesInt = 0;
                 docLines.clear();
                 numOfDocs++;
-                System.out.println("num of docs: "+numOfDocs);
+                System.out.println("num of docs: " + numOfDocs);
             }
         }
 
@@ -125,31 +129,21 @@ public class ReadFile {
 
 
     private String extractDocID(String line) {
-        String ans=line.substring(7,line.length()-8);
+        String ans = line.substring(7, line.length() - 8);
         return ans;
     }
 
     private void processdocument(List<String> doc, int docID) {
-        Collection<ATerm> terms=parse.parseDocument(extractFileText(doc));
-        indexer.createInvertedIndex(terms.iterator(),docID);
+        Collection<ATerm> terms = parse.parseDocument(extractDocText(doc));
+        indexer.createInvertedIndex(terms.iterator(), docID);
     }
 
     private void createDoc(Path filePath, int startLineNum, int numOfLines, int docID) {
-        /*
-        JSONObject obj = new JSONObject();
-        obj.put("docID", docID);
-        obj.put("filePath", filePath.toString());
-        obj.put("startLineNum", startLineNum);
-        obj.put("numOfLines", numOfLines);
-        */
-        try(FileWriter fw = new FileWriter("Documents.txt", true);
-            BufferedWriter bw = new BufferedWriter(fw);
-            PrintWriter out = new PrintWriter(bw))
-        {
-//            out.println("{\"docID\":\""+docID+"\",\"filePath\":\""+filePath.toString()+"\",\"startLineNum\":"+startLineNum+",\"numOfLines\":"+numOfLines+"}");
-//            out.println(obj.toString());
-            String fileName=extractFileName(filePath.toString());
-            out.println(fileName+" "+startLineNum+" "+numOfLines);
+        try (FileWriter fw = new FileWriter("Documents.txt", true);
+             BufferedWriter bw = new BufferedWriter(fw);
+             PrintWriter out = new PrintWriter(bw)) {
+            String fileName = extractFileName(filePath.toString());
+            out.println(fileName + " " + startLineNum + " " + numOfLines);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -160,23 +154,28 @@ public class ReadFile {
 //      return path.split("corpus")[1];
         String[] splitPath;
         String fileName;
-        if(path.contains("\\")){
-            splitPath= path.split("\\\\");
-            fileName="\\"+splitPath[splitPath.length-1]+"\\"+splitPath[splitPath.length-2];
+        if (path.contains("\\")) {
+            splitPath = path.split("\\\\");
+            fileName = "\\" + splitPath[splitPath.length - 1] + "\\" + splitPath[splitPath.length - 2];
+        } else {
+            splitPath = path.split("/");
+            fileName = "/" + splitPath[splitPath.length - 1] + "/" + splitPath[splitPath.length - 2];
         }
-        else {
-            splitPath= path.split("/");
-            fileName="/"+splitPath[splitPath.length-1]+"/"+splitPath[splitPath.length-2];
-        }
-         return fileName;
+        return fileName;
     }
 
-
-    public void deleteAllDocuments() {
+    public static void deletePrevFiles() {
         try {
+            Files.delete(Paths.get("dictionary.txt"));
+            Files.delete(Paths.get("postingLists.txt"));
             Files.delete(Paths.get("Documents.txt"));
+            Files.delete(Paths.get("DocumentsInfo.txt"));
+            File dir = new File("blocks");
+            for (File file : dir.listFiles())
+                if (!file.isDirectory())
+                    file.delete();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("all files did not deleted");
         }
     }
 
@@ -196,12 +195,12 @@ public class ReadFile {
                 e1.printStackTrace();
             }
         }
-        return extractFileText(lineList);
+        return extractDocText(lineList);
 
 
     }
 
-    public List<String> extractFileText(List<String> lineList) {
+    public List<String> extractDocText(List<String> lineList) {
         List<String> fileText = new ArrayList<>();
         boolean isText = false;
         for (int i = 0; i < lineList.size(); i++) {
@@ -218,51 +217,18 @@ public class ReadFile {
         return fileText;
     }
 
-    /*
-    public static Map<String, Object> jsonToMap(JSONObject json) throws JSONException {
-        Map<String, Object> retMap = new HashMap<String, Object>();
-
-        if(json != JSONObject.NULL) {
-            retMap = toMap(json);
+    public List<String> extractDocCity(List<String> lineList) {
+        for (int i = 0; i < lineList.size(); i++) {
+            String line = lineList.get(i);
+            if (line.contains("<F P=104>")) {
+                line=line.split(">")[1];
+                if(!line.equals(""))
+                    System.out.println(line.substring(2).split(" ")[0]+" "+line.substring(2).split(" ")[1]);
+            }
         }
-        return retMap;
+        return null;
     }
 
-    public static Map<String, Object> toMap(JSONObject object) throws JSONException {
-        Map<String, Object> map = new HashMap<String, Object>();
 
-        Iterator<String> keysItr = object.keys();
-        while(keysItr.hasNext()) {
-            String key = keysItr.next();
-            Object value = object.get(key);
-
-            if(value instanceof JSONArray) {
-                value = toList((JSONArray) value);
-            }
-
-            else if(value instanceof JSONObject) {
-                value = toMap((JSONObject) value);
-            }
-            map.put(key, value);
-        }
-        return map;
-    }
-
-    public static List<Object> toList(JSONArray array) throws JSONException {
-        List<Object> list = new ArrayList<Object>();
-        for(int i = 0; i < array.length(); i++) {
-            Object value = array.get(i);
-            if(value instanceof JSONArray) {
-                value = toList((JSONArray) value);
-            }
-
-            else if(value instanceof JSONObject) {
-                value = toMap((JSONObject) value);
-            }
-            list.add(value);
-        }
-        return list;
-    }
-    */
 
 }
