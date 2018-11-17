@@ -310,7 +310,8 @@ public class Parse {
             //remove unnecessarry chars and add to list
             for (int i = 0; i < lineTokens.length; i++) {
                 lineTokens[i] = removeUnnecessaryChars(lineTokens[i]);
-                tokens.add(lineTokens[i]);
+                if(lineTokens[i]!=null)
+                    tokens.add(lineTokens[i]);
             }
 
         });
@@ -318,25 +319,28 @@ public class Parse {
     }
 
     private String removeUnnecessaryChars(String lineToken) {
+        if(lineToken==null || lineToken.equals(""))
+            return null;
         int firstNecessary = 0;
         int lastNecessary = lineToken.length()-1;
         //find first necessary index
-       if(!necessaryChars.contains(lineToken.charAt(firstNecessary)) &&
-               (!(Character.isDigit(lineToken.charAt(firstNecessary)) ||
-                       Character.isLetter(lineToken.charAt(firstNecessary))))/*!(Character.isDigit(lineToken.charAt(firstNecessary)) ||//first digit is not digit
-               Character.isLetter(lineToken.charAt(firstNecessary)) ||//first digit is not letter
-               currencySymbols.contains(""+lineToken.charAt(firstNecessary)))&&
-            && !necessaryChars.contains(lineToken.charAt(firstNecessary))*/){
+       while (firstNecessary<lineToken.length()-1 && !necessaryChars.contains(lineToken.charAt(firstNecessary)) && (!(Character.isDigit(lineToken.charAt(firstNecessary)) || Character.isLetter(lineToken.charAt(firstNecessary))))){
            firstNecessary++;
        }
-        if(!(Character.isDigit(lineToken.charAt(lastNecessary)) ||//first digit is not digit
+       if(firstNecessary>lastNecessary)
+           return null;
+        while (lastNecessary>0 && !(Character.isDigit(lineToken.charAt(lastNecessary)) ||//first digit is not digit
                 Character.isLetter(lineToken.charAt(lastNecessary)) ||//first digit is not letter
                 currencySymbols.contains(""+lineToken.charAt(lastNecessary)))){ //first digit is not currency
             lastNecessary--;
         }
+        if(firstNecessary>lastNecessary)
+            return null;
         if(firstNecessary!=0 || lastNecessary!=lineToken.length()-1)
             lineToken = lineToken.substring(firstNecessary,lastNecessary+1);
-        return lineToken;
+        if(lineToken.length()>=2 && lineToken.substring(lineToken.length()-2,lineToken.length()).equals("'s"))
+            lineToken = lineToken.substring(0,lineToken.length()-2);
+        return lineToken.length()>0 ? lineToken : null;
     }
 
 
@@ -483,19 +487,20 @@ public class Parse {
         }
         //check month
         else if(getMonthWords().contains(token)){
-            String nextToken = tokens.isEmpty() ? null : tokens.get(1);
-            if(isNumber(nextToken) && isInteger(nextToken)){
+            String nextToken = tokens.isEmpty() ? null : tokens.get(0);
+            if(nextToken!=null && isNumber(nextToken) && isInteger(nextToken)){
                 int day = Integer.parseInt(nextToken);
-                if(day>0 && day<lastDayInMonth.get(token)){
+                if(day>0 && day<lastDayInMonth.get(months.get(token))){
                     nextTerm = new DateTerm(months.get(token),day);
                     toReturn.add(nextTerm);
+                    tokens.remove(0);
                     return;
                 }
             }
         }
         //check hyphenated word
         else if(isHyphenatedWord(token)){
-            toReturn.addAll(getHyphenatedTokens(token));
+            toReturn.addAll(getHyphenatedTokens(token,"-"));
             return;
         }
         boolean isNumber = false;
@@ -517,8 +522,9 @@ public class Parse {
         if(isFraction(token)){
             isFraction = true;
             nextTerm = isNumber ? new CompoundFractionTerm((NumberTerm) nextTerm, getFractionTerm(token)) : getFractionTerm(token);
+            if(isNumber)
+                tokens.remove(0);
             isNumber = true;
-            tokens.remove(0);
             //if list is now empty, return, else switch token to next word
             if(tokens.isEmpty()){
                 toReturn.add(nextTerm);
@@ -554,7 +560,6 @@ public class Parse {
         //if list is empty, no tokens
         if(tokens.size() == 0)
             return null;
-
         String token = tokens.get(0);
         tokens.remove(0);
         //if is number
@@ -569,12 +574,13 @@ public class Parse {
         return toReturn;
     }
 
-    private List<ATerm> getHyphenatedTokens(String token) {
+    private List<ATerm> getHyphenatedTokens(String token, String delimiter) {
         List<ATerm> toReturn = new ArrayList<>();
         toReturn.add(new WordTerm(token));
-        String[] words= token.split("-");
+        String[] words= token.split(delimiter);
         List<String> individualWords = new ArrayList<>(words.length);
         for (int i = 0; i < words.length; i++) {
+            words[i] = removeUnnecessaryChars(words[i]);
             if(words[i]!=null && words[i].length()>0)
                 individualWords.add(words[i]);
         }
@@ -631,7 +637,7 @@ public class Parse {
                 pointer++;
         }
         //check if is number and word after it represents value
-        if(pointer>0){
+        if(pointer>0 && pointer<s.length()){
             String numString = s.substring(0,pointer+1);
             String word = s.substring(pointer+1);
             if(isNumber(numString) && getValueKeywords().contains(word))
