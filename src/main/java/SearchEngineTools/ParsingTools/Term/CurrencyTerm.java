@@ -1,4 +1,4 @@
-package SearchEngineTools.Term;
+package SearchEngineTools.ParsingTools.Term;
 
 import java.util.List;
 

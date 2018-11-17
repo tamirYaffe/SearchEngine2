@@ -1,4 +1,4 @@
-package SearchEngineTools;
+package SearchEngineTools.ParsingTools;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -8,7 +8,7 @@ public class ParsingHashMap extends HashMap<String,String> {
 
     private int wordsInLongestKey;
 
-    ParsingHashMap(HashMap<String,String> m){
+    ParsingHashMap(Map<String,String> m){
         super(m.size());
         putAll(m);
 
