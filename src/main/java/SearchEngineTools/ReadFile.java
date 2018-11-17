@@ -39,14 +39,12 @@ public class ReadFile {
             e.printStackTrace();
         }
         //write remaining posting lists to disk
-        /*
         indexer.sortAndWriteInvertedIndexToDisk();
         try {
             indexer.mergeBlocks();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        */
         return numOfDocs;
     }
 
@@ -110,13 +108,12 @@ public class ReadFile {
             docLines.add(line);
             endLineNumInt++;
             numOfLinesInt++;
-            //endingPoint.addAndGet(line.getBytes().length+1);
             if (line.contains("<DOCNO>"))
                 docName = extractDocID(line);
             if (line.equals("</DOC>")) {
-                //createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
-                //processdocument(docLines, numOfDocs);
-                extractDocCity(docLines);
+                createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
+                processdocument(docLines, numOfDocs);
+                //extractDocCity(docLines);
                 startLineNumInt = endLineNumInt + 1;
                 numOfLinesInt = 0;
                 docLines.clear();
