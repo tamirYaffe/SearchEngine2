@@ -20,7 +20,7 @@ public class ReadFile {
 
     public ReadFile() {
         parse = new Parse();
-        indexer = new Indexer(4000);
+        indexer = new Indexer(1024*64);
     }
 
     public int listAllFiles(String path) {
@@ -29,6 +29,7 @@ public class ReadFile {
             paths.forEach(filePath -> {
                 if (Files.isRegularFile(filePath)) {
                     try {
+                        ////////if numof docs <146
                         divideFileToDocs(readContent(filePath), filePath);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -49,24 +50,12 @@ public class ReadFile {
     }
 
     private List<String> readContent(Path filePath) throws IOException {
-        /*
-        List<String> fileList=null;
-        try {
-            fileList = Files.readAllLines(filePath, Charset.forName("UTF-8"));
 
-        } catch (IOException e) {
-            //for foreign file coding.
-            fileList = Files.readAllLines(filePath, Charset.forName("ISO-8859-1"));
-        }
-        return fileList;
-        */
         BufferedReader br = null;
         FileReader fr = null;
         List<String> fileList = new ArrayList<>();
-        String line = null;
+        String line;
         try {
-
-            //br = new BufferedReader(new FileReader(FILENAME));
             fr = new FileReader(filePath.toString());
             br = new BufferedReader(fr);
             while ((line = br.readLine()) != null) {
@@ -97,7 +86,6 @@ public class ReadFile {
     }
 
     private void divideFileToDocs(List<String> fileList, Path filePath) {
-
         List<String> docLines = new ArrayList<>();
         String docName;
         int startLineNumInt = 0;
@@ -105,6 +93,8 @@ public class ReadFile {
         int numOfLinesInt = 0;
         int s = 0;
         for (String line : fileList) {
+//            if(numOfDocs>145)
+//                return;
             docLines.add(line);
             endLineNumInt++;
             numOfLinesInt++;
@@ -137,10 +127,10 @@ public class ReadFile {
 
     private void createDoc(Path filePath, int startLineNum, int numOfLines, int docID) {
         try (FileWriter fw = new FileWriter("Documents.txt", true);
-             BufferedWriter bw = new BufferedWriter(fw);
-             PrintWriter out = new PrintWriter(bw)) {
+             BufferedWriter bw = new BufferedWriter(fw)) {
             String fileName = extractFileName(filePath.toString());
-            out.println(fileName + " " + startLineNum + " " + numOfLines);
+            bw.write(fileName + " " + startLineNum + " " + numOfLines);
+            bw.newLine();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -210,7 +200,8 @@ public class ReadFile {
             if (isText)
                 fileText.add(line);
         }
-        fileText.remove(0);
+        if(!fileText.isEmpty())
+            fileText.remove(0);
         return fileText;
     }
 
