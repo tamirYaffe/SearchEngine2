@@ -14,6 +14,6 @@ public class CompoundFractionTerm extends FractionTerm {
 
     @Override
     protected String createTerm() {
-        return whole.getTerm() + " "+ super.getTerm();
+        return whole.createTerm() + " "+ super.createTerm();
     }
 }
