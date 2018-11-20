@@ -31,6 +31,7 @@ public class ReadFile {
                         divideFileToDocs(readContent(filePath), filePath);
                     } catch (Exception e) {
                         e.printStackTrace();
+                        return;
                     }
                 }
             });
@@ -38,12 +39,12 @@ public class ReadFile {
             e.printStackTrace();
         }
         //write remaining posting lists to disk
-        indexer.sortAndWriteInvertedIndexToDisk();
+        /*indexer.sortAndWriteInvertedIndexToDisk();
         try {
             indexer.mergeBlocks();
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
         return numOfDocs;
     }
 
@@ -111,7 +112,7 @@ public class ReadFile {
             if (line.contains("<DOCNO>"))
                 docName=extractDocID(line);
             if (line.equals("</DOC>")) {
-                createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
+                //createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
                 processdocument(docLines, numOfDocs);
                 startLineNumInt=endLineNumInt+1;
                 numOfLinesInt=0;
@@ -131,7 +132,7 @@ public class ReadFile {
 
     private void processdocument(List<String> doc, int docID) {
         Collection<ATerm> terms=parse.parseDocument(extractFileText(doc));
-        indexer.createInvertedIndex(terms.iterator(),docID);
+        //indexer.createInvertedIndex(terms.iterator(),docID);
     }
 
     private void createDoc(Path filePath, int startLineNum, int numOfLines, int docID) {
@@ -214,6 +215,8 @@ public class ReadFile {
             if (isText)
                 fileText.add(line);
         }
+        if(fileText.isEmpty())
+            return fileText;
         fileText.remove(0);
         return fileText;
     }
