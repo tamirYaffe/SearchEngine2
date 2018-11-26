@@ -3,6 +3,8 @@ package SearchEngineTools;
 import SearchEngineTools.Indexer;
 import SearchEngineTools.ParsingTools.Parse;
 import SearchEngineTools.ParsingTools.Term.ATerm;
+import javafx.util.Pair;
+import sun.awt.Mutex;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -10,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Stream;
 
 public class ReadFile {
@@ -17,13 +21,20 @@ public class ReadFile {
     private Parse parse;
     private Indexer indexer;
 
+    //threads
+    private ConcurrentBuffer buffer=new ConcurrentBuffer();
+    private Mutex mutex=new Mutex();
+
+
 
     public ReadFile() {
         parse = new Parse();
-        indexer = new Indexer(1024*64);
+        indexer = new Indexer(1048576);
     }
 
     public int listAllFiles(String path) {
+        startIndexThread();
+
         Document.corpusPath = path;
         try (Stream<Path> paths = Files.walk(Paths.get(path))) {
             paths.forEach(filePath -> {
@@ -39,7 +50,9 @@ public class ReadFile {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        buffer.add(new Pair<>(null,-1));
         //write remaining posting lists to disk
+        mutex.lock();
         indexer.sortAndWriteInvertedIndexToDisk();
         try {
             indexer.mergeBlocks();
@@ -48,6 +61,7 @@ public class ReadFile {
         }
         return numOfDocs;
     }
+
 
     private List<String> readContent(Path filePath) throws IOException {
 
@@ -102,27 +116,47 @@ public class ReadFile {
                 docName = extractDocID(line);
             if (line.equals("</DOC>")) {
                 createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
-                processdocument(docLines, numOfDocs);
-                //extractDocCity(docLines);
+//                processdocument(docLines, numOfDocs);
+                startParseThread(docLines,numOfDocs);
+//                extractDocCity(docLines);
                 startLineNumInt = endLineNumInt + 1;
                 numOfLinesInt = 0;
                 docLines.clear();
                 numOfDocs++;
-                System.out.println("num of docs: " + numOfDocs);
+                //System.out.println("num of docs: " + numOfDocs);
             }
         }
 
     }
 
+    private void processdocument(List<String> doc, int docID) {
+        Collection<ATerm> terms = parse.parseDocument(extractDocText(doc));
+        buffer.add(new Pair(terms.iterator(),docID));
+
+        //indexer.createInvertedIndex(terms.iterator(), docID);
+    }
+    private void startParseThread(List<String> doc, int docID){
+        Runnable r = new MyRunnable(extractDocText(doc),docID);
+        new Thread(r).start();
+    }
+    private void startIndexThread() {
+        System.out.println("starting indexing");
+        Thread createIndex=new Thread(() -> {
+            mutex.lock();
+            while (true) {
+                Pair<Iterator<ATerm>, Integer> toIndex = buffer.get();
+                if(toIndex.getValue()==-1)
+                    break;
+                indexer.createInvertedIndex(toIndex.getKey(), toIndex.getValue());
+            }
+            mutex.unlock();
+        });
+        createIndex.start();
+    }
 
     private String extractDocID(String line) {
         String ans = line.substring(7, line.length() - 8);
         return ans;
-    }
-
-    private void processdocument(List<String> doc, int docID) {
-        Collection<ATerm> terms = parse.parseDocument(extractDocText(doc));
-        indexer.createInvertedIndex(terms.iterator(), docID);
     }
 
     private void createDoc(Path filePath, int startLineNum, int numOfLines, int docID) {
@@ -217,6 +251,20 @@ public class ReadFile {
         return null;
     }
 
+    /////runnable class for multithreading the parse
+    public class MyRunnable implements Runnable {
+        private List<String> doc;
+        private int docID;
 
+        public MyRunnable(List<String> doc, int docID) {
+            this.docID=docID;
+            this.doc=doc;
+        }
+
+        public void run() {
+            Collection<ATerm> terms =parse.parseDocument(doc);
+            buffer.add(new Pair(terms.iterator(),docID));
+        }
+    }
 
 }
