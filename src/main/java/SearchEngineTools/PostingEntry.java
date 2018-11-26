@@ -29,4 +29,12 @@ public class PostingEntry {
     public String toString() {
         return docID+" "+termTF;
     }
+
+    public void setDocID(int docID) {
+        this.docID = docID;
+    }
+
+    public int compareTo(PostingEntry other){
+        return this.docID-other.docID;
+    }
 }
