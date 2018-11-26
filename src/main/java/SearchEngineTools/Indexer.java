@@ -3,6 +3,7 @@ package SearchEngineTools;
 import SearchEngineTools.ParsingTools.Term.ATerm;
 import SearchEngineTools.ParsingTools.Term.WordTerm;
 import javafx.util.Pair;
+import sun.awt.Mutex;
 
 import java.io.*;
 import java.util.*;
@@ -11,7 +12,7 @@ public class Indexer {
     //dictionary that holds term->idf. used also for word check for big first word.
     private Map<String, Pair<Integer,Integer>> dictionary;
     //dictionary and posting list in one hash
-    private Map<String, List<PostingEntry>> tempInvertedIndex;
+    private Map<String, PostingList> tempInvertedIndex;
 
     private int memoryBlockSize;
     private int usedMemory;
@@ -45,14 +46,19 @@ public class Indexer {
      * @param terms - list of the document terms(after parse).
      * @param docID
      */
-    public void createInvertedIndex(Iterator<ATerm> terms, int docID) {
-        System.out.println("started indexing: "+docID);
+    public  void  createInvertedIndex(Iterator<ATerm> terms, int docID) {
+        //System.out.println("started indexing: "+docID);
         Document document=new Document(docID);
         while (terms.hasNext()) {
             ATerm aTerm = terms.next();
             if (aTerm instanceof WordTerm)
                 handleCapitalWord(aTerm);
             String term = aTerm.getTerm();
+
+            //need to fix!!!
+            if(term.contains(";"))
+                term=term.substring(0,term.indexOf(";"))+"_fixed";
+
             int termOccurrences=aTerm.getOccurrences();
             document.updateDocInfo(termOccurrences);
             //add or update dictionary.
@@ -60,17 +66,18 @@ public class Indexer {
                 dictionary.put(term, new Pair<>(1,-1));
             else
                 dictionary.replace(term,new Pair<>(dictionary.get(term).getKey()+1,-1));
-            List<PostingEntry> postingsList;
+            PostingList postingsList;
             PostingEntry postingEntry = new PostingEntry(docID, termOccurrences);
             if (!tempInvertedIndex.containsKey(term)) {
-                postingsList = new ArrayList<>();
+                postingsList = new PostingList();
                 tempInvertedIndex.put(term, postingsList);
                 usedMemory += term.length() + 1;
             } else {
                 postingsList = tempInvertedIndex.get(term);
             }
-            postingsList.add(postingEntry);
-            usedMemory+=postingEntry.getSizeInBytes();
+            int addedMemory=postingsList.add(postingEntry);
+            if(addedMemory!=-1)
+                usedMemory+=addedMemory;
             if (usedMemory > memoryBlockSize) {
                 sortAndWriteInvertedIndexToDisk();
                 //init dictionary and posting lists.
@@ -79,7 +86,7 @@ public class Indexer {
             }
         }
         document.writeDocInfoToDisk();
-        System.out.println("finish: " + docID);
+        //System.out.println("finish: " + docID);
     }
 
     public void mergeBlocks() throws IOException {
@@ -89,7 +96,6 @@ public class Indexer {
         PriorityQueue<Pair<String, Integer>> queue = new PriorityQueue<>(comparator);
         FileWriter fw = new FileWriter("postingLists.txt",true);
         BufferedWriter bw = new BufferedWriter(fw);
-//        BufferedWriter bw = new BufferedWriter(fw,memoryBlockSize);
         String curPostingList;
         List<String> bufferPostingLists=new ArrayList<>();
         //create readers and init queue.
@@ -98,7 +104,6 @@ public class Indexer {
             readers[i] = new BufferedReader(new FileReader(fileName));
             queue.add(new Pair<>(readers[i].readLine(), i));
         }
-
         while (!queue.isEmpty()) {
             curPostingList=getNextPostingList(queue,readers);
             curPostingList=checkForMergeingPostingLines(queue,readers,curPostingList);
@@ -119,26 +124,55 @@ public class Indexer {
         //writing buffer remaining posting lists
         if(usedMemory>0){
             writeBufferPostingListsToDisk(bw,bufferPostingLists);
-            //init dictionary and posting lists.
-            tempInvertedIndex.clear();
-            usedMemory = 0;
         }
         bw.close();
         writeDictionaryToDisk();
         //sortAndWriteDictionaryToDisk();
     }
 
-    private String extractTerm(String postingList) {
-        if(!postingList.contains("Dollars"))
-            return postingList.split(" ")[0];
-        else {
-            return postingList.substring(0,postingList.indexOf("Dollars")+7);
+    public  void sortAndWriteInvertedIndexToDisk() {
+        if(usedMemory==0)
+            return;
+        System.out.println("writing to disk: blockNum" +blockNum+" "+ usedMemory+" bytes");
+        String fileName = "blocks/block" + blockNum + ".txt";
+        blockNum++;
+        try (FileWriter fw = new FileWriter(fileName);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+
+            List<String> keys = new ArrayList<>(tempInvertedIndex.keySet());
+            Collections.sort(keys);
+            for (String key : keys) {
+                bw.write(key+";");
+                bw.write(""+tempInvertedIndex.get(key));
+                bw.newLine();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+        System.out.println("finished writing blockNum"+blockNum);
+    }
+
+    public void loadDictionaryFromDisk(String path){
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(path));
+            String line;
+            while (( line=reader.readLine())!=null){
+                dictionary.put(line.split(" ")[0],new Pair<>(Integer.valueOf(line.split(" ")[1]),Integer.valueOf(line.split(" ")[2])) );
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //<editor-fold desc="Private functions">
+    private String extractTerm(String postingList) {
+        return postingList.substring(0,postingList.indexOf(";"));
     }
 
     private void writeBufferPostingListsToDisk(BufferedWriter bw, List<String> bufferPostingLists) throws IOException {
         for(String postingList:bufferPostingLists){
-            bw.write(postingList.substring(postingList.indexOf(" ")+1));
+            bw.write(postingList.substring(postingList.indexOf(";")+1));
 //            bw.write(postingList);
             bw.newLine();
         }
@@ -149,23 +183,6 @@ public class Indexer {
              BufferedWriter bw = new BufferedWriter(fw)) {
             for(Map.Entry entry: dictionary.entrySet()){
                 bw.write(entry.getKey()+" "+((Pair<Integer,Integer>)entry.getValue()).getKey()+" "+((Pair<Integer,Integer>)entry.getValue()).getValue());
-                bw.newLine();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void sortAndWriteDictionaryToDisk() {
-        try (FileWriter fw = new FileWriter("dictionary.txt");
-             BufferedWriter bw = new BufferedWriter(fw)) {
-
-            List<String> keys = new ArrayList<>(dictionary.keySet());
-            Collections.sort(keys);
-            for (String key : keys) {
-                Pair<Integer,Integer>dictionaryPair=dictionary.get(key);
-                bw.write(key+" "+dictionaryPair.getKey()+" "+dictionaryPair.getValue());
                 bw.newLine();
             }
 
@@ -192,10 +209,10 @@ public class Indexer {
             if(nextPostingList!=null)
                 queue.add(new Pair<>(nextPostingList,blockIndex));
             //handling words lower/upper case
-            String[] splitPostingList=postingList.split(" ");
-            if(Character.isUpperCase(splitPostingList[0].charAt(0)) && dictionary.containsKey(splitPostingList[0].toLowerCase())){
+            String term=extractTerm(postingList);
+            if(Character.isUpperCase(term.charAt(0)) && dictionary.containsKey(term.toLowerCase())){
                 //change posting list
-                String updatedPostingList=splitPostingList[0].toLowerCase()+postingList.substring(postingList.indexOf(" "));
+                String updatedPostingList=term.toLowerCase()+postingList.substring(postingList.indexOf(";"));
                 // add to queue
                 queue.add(new Pair<>(updatedPostingList,blockIndex));
             }
@@ -221,43 +238,22 @@ public class Indexer {
     }
 
     private String mergePostingLists(String postingList1, String postingList2) {
-        String[] splitPostingList1=postingList1.split(" ");
-        String[] splitPostingList2=postingList2.split(" ");
-        //compare last docId in the lists.
-        if(Integer.parseInt(splitPostingList1[splitPostingList1.length-2])<Integer.parseInt(splitPostingList2[splitPostingList2.length-2])) {
-//            postingList1+=postingList2.substring(postingList2.indexOf(" "));
-            postingList1+=postingList2.substring(extractTerm(postingList2).length());
-            return postingList1;
-        }
-        else {
-//            postingList2+=postingList1.substring(postingList1.indexOf(" "));
-            postingList2+=postingList1.substring(extractTerm(postingList2).length());
-            return postingList2;
-        }
+        String term=extractTerm(postingList1);
+        postingList1=postingList1.substring(postingList1.indexOf(";")+1);
+        postingList2=postingList2.substring(postingList2.indexOf(";")+1);
+        int lastDocID1=PostingList.calculateLastDocID(postingList1);
+        String firstDocID=postingList2.substring(0,postingList2.indexOf(" "));
+        int firstDocID2=Integer.parseInt(firstDocID)-lastDocID1;
+        firstDocID=""+firstDocID2;
+        postingList2=firstDocID+postingList2.substring(postingList2.indexOf(" "));
+        return term+";"+postingList1+" "+postingList2;
     }
-
-    public void sortAndWriteInvertedIndexToDisk() {
-        System.out.println("writing to disk: " + usedMemory+" bytes");
-        String fileName = "blocks/block" + blockNum + ".txt";
-        blockNum++;
-        try (FileWriter fw = new FileWriter(fileName);
-             BufferedWriter bw = new BufferedWriter(fw)) {
-
-            List<String> keys = new ArrayList<>(tempInvertedIndex.keySet());
-            Collections.sort(keys);
-            for (String key : keys) {
-                bw.write(key);
-                for (PostingEntry postingEntry : tempInvertedIndex.get(key))
-                    bw.write(" " + postingEntry);
-                bw.newLine();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+    private String mergeAndSortPostingLists(String postingList1, String postingList2) {
+        String term=extractTerm(postingList1);
+        PostingList postingList_1=new PostingList(postingList1);
+        PostingList postingList_2=new PostingList(postingList2);
+        return term+";"+PostingList.mergeLists(postingList_1,postingList_2);
     }
-
 
     private void handleCapitalWord(ATerm aTerm) {
         String term = aTerm.getTerm();
@@ -281,15 +277,21 @@ public class Indexer {
         }
     }
 
-    public void loadDictionaryFromDisk(String path){
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(path));
-            String line;
-            while (( line=reader.readLine())!=null){
-                dictionary.put(line.split(" ")[0],new Pair<>(Integer.valueOf(line.split(" ")[1]),Integer.valueOf(line.split(" ")[2])) );
+    private void sortAndWriteDictionaryToDisk() {
+        try (FileWriter fw = new FileWriter("dictionary.txt");
+             BufferedWriter bw = new BufferedWriter(fw)) {
+
+            List<String> keys = new ArrayList<>(dictionary.keySet());
+            Collections.sort(keys);
+            for (String key : keys) {
+                Pair<Integer,Integer>dictionaryPair=dictionary.get(key);
+                bw.write(key+" "+dictionaryPair.getKey()+" "+dictionaryPair.getValue());
+                bw.newLine();
             }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    //</editor-fold>
 }
