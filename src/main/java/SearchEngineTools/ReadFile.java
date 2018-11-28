@@ -4,6 +4,7 @@ import SearchEngineTools.Indexer;
 import SearchEngineTools.ParsingTools.Parse;
 import SearchEngineTools.ParsingTools.Term.ATerm;
 import javafx.util.Pair;
+import org.apache.commons.io.FileUtils;
 import sun.awt.Mutex;
 
 import java.io.*;
@@ -20,11 +21,12 @@ public class ReadFile {
     private static int numOfDocs;
     private Parse parse;
     private Indexer indexer;
+    private List<String> stopWorsd = new ArrayList<>();
+
 
     //threads
-    private ConcurrentBuffer buffer=new ConcurrentBuffer();
-    private Mutex mutex=new Mutex();
-
+    private ConcurrentBuffer buffer = new ConcurrentBuffer();
+    private Mutex mutex = new Mutex();
 
 
     public ReadFile() {
@@ -33,15 +35,15 @@ public class ReadFile {
     }
 
     public int listAllFiles(String path) {
-        startIndexThread();
-
+        createStopWords(path);
         Document.corpusPath = path;
+        startIndexThread();
         try (Stream<Path> paths = Files.walk(Paths.get(path))) {
             paths.forEach(filePath -> {
                 if (Files.isRegularFile(filePath)) {
                     try {
-                        ////////if numof docs <146
-                        divideFileToDocs(readContent(filePath), filePath);
+                        if (!filePath.toString().contains("stop_words"))
+                            divideFileToDocs(readContent(filePath), filePath);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -50,7 +52,7 @@ public class ReadFile {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        buffer.add(new Pair<>(null,-1));
+        buffer.add(new Pair<>(null, -1));
         //write remaining posting lists to disk
         mutex.lock();
         indexer.sortAndWriteInvertedIndexToDisk();
@@ -60,6 +62,23 @@ public class ReadFile {
             e.printStackTrace();
         }
         return numOfDocs;
+    }
+
+    private void createStopWords(String path) {
+        File root = new File(path);
+        String fileName = "stop_words.txt";
+        try {
+            boolean recursive = true;
+
+            Collection files = FileUtils.listFiles(root, null, recursive);
+            for (Iterator iterator = files.iterator(); iterator.hasNext(); ) {
+                File file = (File) iterator.next();
+                if (file.getName().equals(fileName))
+                    readStopWords(file);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -117,7 +136,7 @@ public class ReadFile {
             if (line.equals("</DOC>")) {
                 createDoc(filePath, startLineNumInt, numOfLinesInt, numOfDocs);
 //                processdocument(docLines, numOfDocs);
-                startParseThread(docLines,numOfDocs);
+                startParseThread(docLines, numOfDocs);
 //                extractDocCity(docLines);
                 startLineNumInt = endLineNumInt + 1;
                 numOfLinesInt = 0;
@@ -131,21 +150,23 @@ public class ReadFile {
 
     private void processdocument(List<String> doc, int docID) {
         Collection<ATerm> terms = parse.parseDocument(extractDocText(doc));
-        buffer.add(new Pair(terms.iterator(),docID));
+        buffer.add(new Pair(terms.iterator(), docID));
 
         //indexer.createInvertedIndex(terms.iterator(), docID);
     }
-    private void startParseThread(List<String> doc, int docID){
-        Runnable r = new MyRunnable(extractDocText(doc),docID);
+
+    private void startParseThread(List<String> doc, int docID) {
+        Runnable r = new MyRunnable(extractDocText(doc), docID);
         new Thread(r).start();
     }
+
     private void startIndexThread() {
         System.out.println("starting indexing");
-        Thread createIndex=new Thread(() -> {
+        Thread createIndex = new Thread(() -> {
             mutex.lock();
             while (true) {
                 Pair<Iterator<ATerm>, Integer> toIndex = buffer.get();
-                if(toIndex.getValue()==-1)
+                if (toIndex.getValue() == -1)
                     break;
                 indexer.createInvertedIndex(toIndex.getKey(), toIndex.getValue());
             }
@@ -234,7 +255,7 @@ public class ReadFile {
             if (isText)
                 fileText.add(line);
         }
-        if(!fileText.isEmpty())
+        if (!fileText.isEmpty())
             fileText.remove(0);
         return fileText;
     }
@@ -243,13 +264,47 @@ public class ReadFile {
         for (int i = 0; i < lineList.size(); i++) {
             String line = lineList.get(i);
             if (line.contains("<F P=104>")) {
-                line=line.split(">")[1];
-                if(!line.equals(""))
-                    System.out.println(line.substring(2).split(" ")[0]+" "+line.substring(2).split(" ")[1]);
+                line = line.split(">")[1];
+                if (!line.equals(""))
+                    System.out.println(line.substring(2).split(" ")[0] + " " + line.substring(2).split(" ")[1]);
             }
         }
         return null;
     }
+
+    private void readStopWords(File filePath) {
+        BufferedReader br = null;
+        FileReader fr = null;
+        String line;
+        try {
+            fr = new FileReader(filePath);
+            br = new BufferedReader(fr);
+            while ((line = br.readLine()) != null) {
+                stopWorsd.add(line);
+            }
+        } catch (IOException e) {
+
+            e.printStackTrace();
+
+        } finally {
+
+            try {
+
+                if (br != null)
+                    br.close();
+
+                if (fr != null)
+                    fr.close();
+
+            } catch (IOException ex) {
+
+                ex.printStackTrace();
+
+            }
+
+        }
+    }
+
 
     /////runnable class for multithreading the parse
     public class MyRunnable implements Runnable {
@@ -257,14 +312,15 @@ public class ReadFile {
         private int docID;
 
         public MyRunnable(List<String> doc, int docID) {
-            this.docID=docID;
-            this.doc=doc;
+            this.docID = docID;
+            this.doc = doc;
         }
 
         public void run() {
-            Collection<ATerm> terms =parse.parseDocument(doc);
-            buffer.add(new Pair(terms.iterator(),docID));
+            Collection<ATerm> terms = parse.parseDocument(doc);
+            buffer.add(new Pair(terms.iterator(), docID));
         }
     }
-
 }
+
+
