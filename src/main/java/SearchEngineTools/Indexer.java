@@ -1,6 +1,7 @@
 package SearchEngineTools;
 
 import SearchEngineTools.ParsingTools.Term.ATerm;
+import SearchEngineTools.ParsingTools.Term.CityTerm;
 import SearchEngineTools.ParsingTools.Term.WordTerm;
 import javafx.util.Pair;
 import sun.awt.Mutex;
@@ -13,6 +14,9 @@ public class Indexer {
     private Map<String, Pair<Integer,Integer>> dictionary;
     //dictionary and posting list in one hash
     private Map<String, PostingList> tempInvertedIndex;
+    //dictionary and posting list in one hash for cities.
+    private Map<String, List<CityPostingEntry>> tempCityInvertedIndex;
+
 
     private int memoryBlockSize;
     private int usedMemory;
@@ -22,6 +26,7 @@ public class Indexer {
     public Indexer() {
         dictionary = new LinkedHashMap<>();
         tempInvertedIndex = new LinkedHashMap<>();
+        tempCityInvertedIndex=new HashMap<>();
     }
 
     public Indexer(Map<String, Pair<Integer,Integer>> dictionary) {
@@ -30,9 +35,8 @@ public class Indexer {
     }
 
     public Indexer(int memoryBlockSize) {
+        this();
         this.memoryBlockSize = memoryBlockSize;
-        dictionary = new LinkedHashMap<>();
-        tempInvertedIndex = new LinkedHashMap<>();
     }
 
     public Indexer(int memoryBlockSize, int blockNum) {
@@ -58,7 +62,10 @@ public class Indexer {
             //need to fix!!!
             if(term.contains(";"))
                 term=term.substring(0,term.indexOf(";"))+"_fixed";
-
+            if(aTerm instanceof CityTerm){
+                document.setDocCity(term);
+                addToCityIndex(aTerm,docID);
+            }
             int termOccurrences=aTerm.getOccurrences();
             document.updateDocInfo(termOccurrences);
             //add or update dictionary.
@@ -163,6 +170,20 @@ public class Indexer {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void addToCityIndex(ATerm aTerm, int docID) {
+        CityTerm cityTerm= (CityTerm) aTerm;
+        List<CityPostingEntry> postingsList;
+        CityPostingEntry postingEntry=new CityPostingEntry(docID,cityTerm.getPositions());
+        String term=aTerm.getTerm();
+        if (!tempCityInvertedIndex.containsKey(term)) {
+            postingsList = new ArrayList<>();
+            tempCityInvertedIndex.put(term, postingsList);
+        } else {
+            postingsList = tempCityInvertedIndex.get(term);
+        }
+        postingsList.add(postingEntry);
     }
 
     //<editor-fold desc="Private functions">
