@@ -14,6 +14,7 @@ public class Document {
     private Long numOfLines;
     private int max_tf;
     private int numOfUniqeTerms;
+    private  String docCity;
 
     public Document(int docNum) {
         this.docNum=docNum;
@@ -57,17 +58,23 @@ public class Document {
     public void updateDocInfo(int termOccurrences) {
         if(termOccurrences>max_tf)
             max_tf=termOccurrences;
-        if(termOccurrences==1)
-            numOfUniqeTerms++;
+        numOfUniqeTerms++;
     }
     public void writeDocInfoToDisk(){
         try(FileWriter fw = new FileWriter("DocumentsInfo.txt", true);
             BufferedWriter bw = new BufferedWriter(fw);
             PrintWriter out = new PrintWriter(bw))
         {
-            out.println(max_tf+" "+numOfUniqeTerms);
+            String toWrite=max_tf+" "+numOfUniqeTerms;
+            if(docCity!=null)
+                toWrite+=" "+docCity;
+            out.println(toWrite);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void setDocCity(String docCity) {
+        this.docCity = docCity;
     }
 }
