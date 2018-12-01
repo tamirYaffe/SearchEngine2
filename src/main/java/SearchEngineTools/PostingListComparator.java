@@ -10,6 +10,8 @@ public class PostingListComparator implements Comparator<Pair<String, Integer>> 
         String postingList1=o1.getKey();
         String postingList2=o2.getKey();
         int compareResult=postingList1.substring(0,postingList1.indexOf(";")).compareTo(postingList2.substring(0,postingList2.indexOf(";")));
+        return compareResult;
+        /*
         if(compareResult==0){
             postingList1=postingList1.substring(postingList1.indexOf(";")+1);
             postingList2=postingList2.substring(postingList2.indexOf(";")+1);
@@ -25,5 +27,6 @@ public class PostingListComparator implements Comparator<Pair<String, Integer>> 
         }
          else
              return compareResult;
+        */
     }
 }
