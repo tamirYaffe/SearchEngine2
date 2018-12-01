@@ -28,7 +28,10 @@ public class ReadFile {
     //threads
     private ConcurrentBuffer buffer = new ConcurrentBuffer();
     private Mutex mutex = new Mutex();
-    private ExecutorService threadPool=Executors.newFixedThreadPool(50);
+//    private ExecutorService threadPool=Executors.newCachedThreadPool();
+//    private ExecutorService threadPool=Executors.newFixedThreadPool(2);
+    private ExecutorService threadPool=Executors.newWorkStealingPool();
+
 
 
     public ReadFile() {
@@ -55,6 +58,7 @@ public class ReadFile {
             e.printStackTrace();
         }
         buffer.add(new Pair<>(null, -1));
+        threadPool.shutdown();
         //write remaining posting lists to disk
         mutex.lock();
         indexer.sortAndWriteInvertedIndexToDisk();
@@ -145,7 +149,7 @@ public class ReadFile {
                 numOfLinesInt = 0;
                 docLines.clear();
                 numOfDocs++;
-                //System.out.println("num of docs: " + numOfDocs);
+                System.out.println("num of docs: " + numOfDocs);
             }
         }
 
@@ -175,7 +179,8 @@ public class ReadFile {
             }
             mutex.unlock();
         });
-        createIndex.start();
+//        createIndex.start();
+        threadPool.execute(createIndex);
     }
 
     private String extractDocID(String line) {
