@@ -97,6 +97,7 @@ public class Indexer {
     }
 
     public void mergeBlocks() throws IOException {
+        System.out.println("starting merge");
         int postingListIndex=0;
         BufferedReader[] readers = new BufferedReader[blockNum];
         PostingListComparator comparator=new PostingListComparator();
@@ -249,7 +250,7 @@ public class Indexer {
             return curPostingList;
         String nextPostingList=queue.peek().getKey();
         while (extractTerm(curPostingList).equals(extractTerm(nextPostingList))){
-            curPostingList=mergePostingLists(curPostingList,nextPostingList);
+            curPostingList=mergeAndSortPostingLists(curPostingList,nextPostingList);
             getNextPostingList(queue,readers);
             if(queue.isEmpty())
                 break;
